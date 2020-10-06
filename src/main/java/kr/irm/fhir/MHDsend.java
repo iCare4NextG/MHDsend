@@ -1,4 +1,4 @@
-package test;
+package kr.irm.fhir;
 
 import org.apache.commons.cli.*;
 import org.hl7.fhir.r4.model.codesystems.DocumentReferenceStatus;
@@ -19,12 +19,12 @@ public class MHDsend {
 	private String manifest_uid;
 	private String document_uid;
 
-	private String category;
-	private String type;
-	private String manifest_type;
-	private String facility;
-	private String practice;
-	private String event;
+	private Code category;
+	private Code type;
+	private Code manifest_type;
+	private Code facility;
+	private Code practice;
+	private Code event;
 	private String content_type;
 	private String patient_id;
 	private String data_binary;
@@ -80,7 +80,7 @@ public class MHDsend {
 					logger.info("Manifest UUID Error : {}", cl.getOptionValue("manifest-uuid"));
 				}
 				else {
-					if (tmpUUID.length() == 32) {
+					if (!tmpUUID.startsWith(UUID_Prefix)) {
 						main.manifest_uuid = UUID_Prefix + tmpUUID;
 					}
 					else {
@@ -98,7 +98,7 @@ public class MHDsend {
 					logger.info("Document UUID Error : {}", cl.getOptionValue("document-uuid"));
 				}
 				else {
-					if (tmpUUID.length() == 32) {
+					if (!tmpUUID.startsWith(UUID_Prefix)) {
 						main.document_uuid = UUID_Prefix + tmpUUID;
 					}
 					else {
@@ -116,7 +116,7 @@ public class MHDsend {
 					logger.info("Binary UUID Error : {}", cl.getOptionValue("binary-uuid"));
 				}
 				else {
-					if (tmpUUID.length() == 32) {
+					if (!tmpUUID.startsWith(UUID_Prefix)) {
 						main.binary_uuid = UUID_Prefix + tmpUUID;
 					}
 					else {
@@ -170,7 +170,8 @@ public class MHDsend {
 					logger.info("Category Error : {}", cl.getOptionValue("category"));
 				}
 				else {
-					main.category = cl.getOptionValue("category");
+					Code code = splitCode(cl.getOptionValue("category"));
+					main.category = code;
 				}
 			}
 			if (cl.hasOption("type")) {
@@ -179,7 +180,8 @@ public class MHDsend {
 					logger.info("Type Error : {}", cl.getOptionValue("type"));
 				}
 				else {
-					main.type = cl.getOptionValue("type");
+					Code code = splitCode(cl.getOptionValue("type"));
+					main.category = code;
 				}
 			}
 			if (cl.hasOption("facility")) {
@@ -188,7 +190,8 @@ public class MHDsend {
 					logger.info("Facility Error : {}", cl.getOptionValue("facility"));
 				}
 				else {
-					main.facility = cl.getOptionValue("facility");
+					Code code = splitCode(cl.getOptionValue("facility"));
+					main.category = code;
 				}
 			}
 			if (cl.hasOption("practice")) {
@@ -197,7 +200,8 @@ public class MHDsend {
 					logger.info("Practice Error : {}", cl.getOptionValue("practice"));
 				}
 				else {
-					main.practice = cl.getOptionValue("practice");
+					Code code = splitCode(cl.getOptionValue("practice"));
+					main.category = code;
 				}
 			}
 			if (cl.hasOption("event")) {
@@ -206,7 +210,8 @@ public class MHDsend {
 					logger.info("Event Error : {}", cl.getOptionValue("event"));
 				}
 				else {
-					main.event = cl.getOptionValue("event");
+					Code code = splitCode(cl.getOptionValue("event"));
+					main.category = code;
 				}
 			}
 			if (cl.hasOption("manifest-type")) {
@@ -215,7 +220,8 @@ public class MHDsend {
 					logger.info("Manifest-type Error : {}", cl.getOptionValue("manifest-type"));
 				}
 				else {
-					main.manifest_type = cl.getOptionValue("manifest-type");
+					Code code = splitCode(cl.getOptionValue("manifest-type"));
+					main.category = code;
 				}
 			}
 			if (cl.hasOption("content-type")) {
@@ -252,6 +258,18 @@ public class MHDsend {
 		} catch (ParseException e) {
 			e.printStackTrace();
 		}
+	}
+
+	private static Code splitCode(String tmpCode) {
+		String[] tmp = tmpCode.split("\\^");
+		Code code;
+		if (tmp.length != 3) {
+			code = new Code(tmp[0], tmp[2]);
+		}
+		else {
+			code = new Code(tmp[0], tmp[1], tmp[2]);
+		}
+		return code;
 	}
 
 	private static boolean checkCode(String code) {
