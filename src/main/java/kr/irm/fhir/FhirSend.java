@@ -114,17 +114,13 @@ public class FhirSend {
 
 	private Binary provideBinary(Map<String, Object> options) {
 		Binary binary = new Binary();
-		try {
-			binary.setId((String) options.get("binary_uuid"));
-			binary.setContentType((String) options.get("content_type"));
-			logger.info("Binary id, content_type : {}, {}", binary.getId(), binary.getContentType());
+		binary.setId((String) options.get("binary_uuid"));
+		binary.setContentType((String) options.get("content_type"));
+		logger.info("Binary id, content_type : {}, {}", binary.getId(), binary.getContentType());
 
-			byte[] byteData = writeToByte((String) options.get("data_binary"));
-			binary.setData(byteData);
-			logger.info("Binary data : {}", binary.getData());
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		byte[] byteData = writeToByte((String) options.get("data_binary"));
+		binary.setData(byteData);
+		logger.info("Binary data : {}", binary.getData());
 		return (binary);
 	}
 
@@ -305,21 +301,25 @@ public class FhirSend {
 		return codeableConcept;
 	}
 
-	private byte[] writeToByte(String file) throws IOException {
-		byte[] fileInByte;
-		String[] fileAll = file.split("\\.");
-		String fileName = fileAll[0];
-		String formatName = fileAll[1];
-		logger.info("file name, format : {}, {}",fileName, formatName);
-
-		BufferedImage originalImage = ImageIO.read(new File("res/" + fileName));
+	private byte[] writeToByte(String file) {
+		byte[] fileInByte = new byte[0];
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		ImageIO.write(originalImage, formatName, baos);
-		baos.flush();
+		try {
+			String[] fileAll = file.split("\\.");
+			String fileName = fileAll[0];
+			String formatName = fileAll[1];
+			logger.info("file name, format : {}, {}", fileName, formatName);
 
-		fileInByte = baos.toByteArray();
+			BufferedImage originalImage = ImageIO.read(new File("res/" + fileName));
 
-		baos.close();
+			ImageIO.write(originalImage, formatName, baos);
+			baos.flush();
+
+			fileInByte = baos.toByteArray();
+			baos.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		return (fileInByte);
 	}
 

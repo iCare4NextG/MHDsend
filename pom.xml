@@ -83,7 +83,7 @@
 				</configuration>
 				<executions>
 					<execution>
-						<id>create-archive</id>
+						<id>make-assembly</id>
 						<phase>package</phase>
 						<goals>
 							<goal>single</goal>
