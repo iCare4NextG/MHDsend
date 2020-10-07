@@ -4,3 +4,14 @@ target/
 bin/
 *.iml
 .settings/
+*.class
+*.jar
+*.war
+*.DS_Store
+.settings
+bin
+examples
+target
+tmp
+test/
+.sts4-cache

@@ -2,7 +2,6 @@ package kr.irm.fhir;
 
 import org.apache.commons.cli.*;
 import org.hl7.fhir.r4.model.Enumerations;
-import org.hl7.fhir.r4.model.codesystems.DocumentReferenceStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -209,6 +208,10 @@ public class MHDsend {
 					optMap.put("facility", main.facility);
 				}
 			}
+			else {
+				Code code = new Code();
+				main.facility = code;
+			}
 			if (cl.hasOption("practice")) {
 				if (!checkCode(cl.getOptionValue("practice"))) {
 					error = true;
@@ -220,6 +223,10 @@ public class MHDsend {
 					optMap.put("practice", main.practice);
 				}
 			}
+			else {
+				Code code = new Code();
+				main.practice = code;
+			}
 			if (cl.hasOption("event")) {
 				if (!checkCode(cl.getOptionValue("event"))) {
 					error = true;
@@ -230,6 +237,10 @@ public class MHDsend {
 					main.event = code;
 					optMap.put("event", main.event);
 				}
+			}
+			else {
+				Code code = new Code();
+				main.event = code;
 			}
 			if (cl.hasOption("manifest-type")) {
 				if (!checkCode(cl.getOptionValue("manifest-type"))) {
