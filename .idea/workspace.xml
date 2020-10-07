@@ -21,9 +21,6 @@
   <component name="ChangeListManager">
     <list default="true" id="bbeb600b-f41a-4e7c-97b0-5c95d5cc5064" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/assembly/bin.xml" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/assembly/bin.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/kr/irm/fhir/FhirSend.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/kr/irm/fhir/FhirSend.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -100,7 +97,7 @@
       <option name="presentableId" value="Default" />
       <updated>1601974419861</updated>
       <workItem from="1601974441776" duration="3260000" />
-      <workItem from="1602034332322" duration="17511000" />
+      <workItem from="1602034332322" duration="18934000" />
     </task>
     <servers />
   </component>
