@@ -3,6 +3,7 @@ package kr.irm.fhir;
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.client.interceptor.BearerTokenAuthInterceptor;
+import org.apache.commons.io.FileUtils;
 import org.hl7.fhir.r4.model.*;
 
 import org.slf4j.Logger;
@@ -12,7 +13,10 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.*;
 
 public class FhirSend {
@@ -57,10 +61,14 @@ public class FhirSend {
 		addBinaryBundle(binary, bundle);
 
 		String patientResourceId = getPatientResourceId((String) options.get("patient_id"));
+//		String patientResourceId = (String) options.get("patient_id");
+		logger.info("patient_id : {}", patientResourceId);
 
+		logger.info("go provideRefer : {}, {}------------- {}", patientResourceId, binary.getId(), options.toString());
 		DocumentReference reference = provideReference(patientResourceId, binary.getId(), options);
 		addReferenceBundle(reference, bundle);
 
+		logger.info("go provideMani : {}, {}------------- {}", patientResourceId, reference.getId(), options.toString());
 		DocumentManifest manifest = provideManifest(patientResourceId, reference.getId(), options);
 		addManifestBundle(manifest, bundle);
 
@@ -74,13 +82,15 @@ public class FhirSend {
 	}
 
 	private String getPatientResourceId(String patient_id) {
-		String patientUrl = URL + "/Patient?_id=" + patient_id;
-		Patient patient = client
-			.read()
-			.resource(Patient.class)
-			.withUrl(patientUrl)
+		logger.info("patient_id : {}", patient_id);
+		String patientUrl = "http://sandwich-local.irm.kr/SDHServer/fhir/r4/Patient?identifier=" + patient_id;//"5c3f536e-fed9-4251-8b1a-e5d18fce6fc1";
+		Bundle patient = client.search()
+			.byUrl(patientUrl)
+			.returnBundle(Bundle.class)
 			.execute();
-		return patient.getId();
+		patient_id = patient.getEntry().get(0).getResource().getId().substring(8);
+		logger.info("patient!!!!!!!! : {}", patient_id);
+		return patient_id;
 	}
 
 	private void addBinaryBundle(Binary binary, Bundle bundle) {
@@ -120,7 +130,7 @@ public class FhirSend {
 
 		byte[] byteData = writeToByte((String) options.get("data_binary"));
 		binary.setData(byteData);
-		logger.info("Binary data : {}", binary.getData());
+//		logger.info("Binary data : {}", binary.getData());
 		return (binary);
 	}
 
@@ -136,6 +146,7 @@ public class FhirSend {
 		identifier
 			.setSystem("urn:ietf:rfc:3986")
 			.setValue((String) options.get("document_uid"));
+		logger.info("Document MasterIdentifier system, uid : {}, {}", identifier.getSystem(), (String) options.get("document_uid"));
 		logger.info("Document MasterIdentifier system, uid : {}, {}", identifier.getSystem(), identifier.getValue());
 		reference.setMasterIdentifier(identifier);
 
@@ -144,18 +155,18 @@ public class FhirSend {
 			.setUse(Identifier.IdentifierUse.OFFICIAL)
 			.setSystem("urn:ietf:rfc:3986")
 			.setValue((String) options.get("document_uuid"));
-		logger.info("Document Identifier : {}", reference.getIdentifier());
+		logger.info("Document Identifier : {}", (String) options.get("document_uuid"));
 
 		//status
 		reference.setStatus((Enumerations.DocumentReferenceStatus) options.get("document_status"));
-		logger.info("Document Status : {}", reference.getStatus());
+		logger.info("Document Status : {}", options.get("document_status"));
 
 		//type (Required)
 		Code type = (Code) options.get("type");
 		CodeableConcept codeableConcept;
 		codeableConcept = setCodeable(type);
 		reference.setType(codeableConcept);
-		logger.info("Document type : {}", reference.getType());
+		logger.info("Document type : {}", type.toString());
 
 		//category (Required)
 		Code category = (Code) options.get("category");
@@ -163,13 +174,13 @@ public class FhirSend {
 		List<CodeableConcept> codeableConceptList = new ArrayList<>();
 		codeableConceptList.add(codeableConcept);
 		reference.setCategory(codeableConceptList);
-		logger.info("Document type : {}", reference.getCategory());
+		logger.info("Document type : {}", category.toString());
 
 		//subject (Required)
 		Reference subjectRefer = new Reference();
 		subjectRefer.setReference("Patient/" + patientResourceId);
 		reference.setSubject(subjectRefer);
-		logger.info("Document category : {}", reference.getSubject());
+		logger.info("Document subject : {}", patientResourceId);
 
 		//Date
 		reference.setDate(new Date());
@@ -185,16 +196,16 @@ public class FhirSend {
 		List<DocumentReference.DocumentReferenceContentComponent> drContentList = new ArrayList<>();
 		Attachment attachment = new Attachment();
 		String language = (String) options.get("language");
-		if (!language.isEmpty()) {
+		if (language == null) {
 			attachment
 				.setContentType((String) options.get("content_type"))
-				.setLanguage(language)
 				.setUrl(binaryUUid)
 				.setSize(0);
 		}
 		else {
 			attachment
 				.setContentType((String) options.get("content_type"))
+				.setLanguage(language)
 				.setUrl(binaryUUid)
 				.setSize(0);
 		}
@@ -206,17 +217,18 @@ public class FhirSend {
 		DocumentReference.DocumentReferenceContextComponent drContext = new DocumentReference.DocumentReferenceContextComponent();
 
 		Code facility = (Code) options.get("facility");
-		if (!facility.codeSystem.isEmpty()) {
+		logger.info("facility : {}", facility);
+		if (facility.codeSystem != null) {
 			codeableConcept = setCodeable(facility);
 			drContext.setFacilityType(codeableConcept);
 		}
 		Code practice = (Code) options.get("practice");
-		if (!practice.codeSystem.isEmpty()) {
+		if (practice.codeSystem != null) {
 			codeableConcept = setCodeable(practice);
 			drContext.setFacilityType(codeableConcept);
 		}
 		Code event = (Code) options.get("event");
-		if (!event.codeSystem.isEmpty()) {
+		if (event.codeSystem != null) {
 			codeableConceptList = new ArrayList<>();
 			codeableConcept = setCodeable(event);
 			codeableConceptList.add(codeableConcept);
@@ -272,6 +284,9 @@ public class FhirSend {
 		//created
 		manifest.setCreated(new Date());
 
+		//source
+		manifest.setSource((String) options.get("source"));
+
 		//description (Required)
 		manifest.setDescription((String) options.get("manifest_title"));
 		logger.info("Manifest title : {}", manifest.getDescription());
@@ -297,30 +312,39 @@ public class FhirSend {
 				.setCode(code.codeValue)
 				.setDisplay(code.displayName);
 		}
-		logger.info("Set Cpdeable : {}", codeableConcept.getText());
+		logger.info("Set Codeable : {}", code.toString());
 		return codeableConcept;
 	}
 
 	private byte[] writeToByte(String file) {
-		byte[] fileInByte = new byte[0];
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		File f = new File("res/"+file);
+		FileInputStream fin = null;
+		FileChannel ch = null;
+		byte[] bytes = new byte[0];
 		try {
-			String[] fileAll = file.split("\\.");
-			String fileName = fileAll[0];
-			String formatName = fileAll[1];
-			logger.info("file name, format : {}, {}", fileName, formatName);
+			fin = new FileInputStream(f);
+			ch = fin.getChannel();
+			int size = (int) ch.size();
+			MappedByteBuffer buf = ch.map(FileChannel.MapMode.READ_ONLY, 0, size);
+			bytes = new byte[size];
+			buf.get(bytes);
 
-			BufferedImage originalImage = ImageIO.read(new File("res/" + fileName));
-
-			ImageIO.write(originalImage, formatName, baos);
-			baos.flush();
-
-			fileInByte = baos.toByteArray();
-			baos.close();
 		} catch (IOException e) {
+			// TODO Auto-generated catch block
 			e.printStackTrace();
+		} finally {
+			try {
+				if (fin != null) {
+					fin.close();
+				}
+				if (ch != null) {
+					ch.close();
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
-		return (fileInByte);
+		return bytes;
 	}
 
 

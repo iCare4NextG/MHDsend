@@ -33,6 +33,7 @@ public class MHDsend {
 	private String language;
 	private String manifest_title;
 	private String document_title;
+	private String source;
 	private Enumerations.DocumentReferenceStatus manifest_status = Enumerations.DocumentReferenceStatus.CURRENT;
 	private Enumerations.DocumentReferenceStatus document_status = Enumerations.DocumentReferenceStatus.CURRENT;
 
@@ -76,6 +77,7 @@ public class MHDsend {
 			CommandLine cl = parser.parse(opts, args);
 			Map<String, Object> optMap = new HashMap<>();
 
+			//manifest-uuid
 			if (cl.hasOption("manifest-uuid")) {
 				String tmpUUID = cl.getOptionValue("manifest-uuid");
 				if (!checkUUID(tmpUUID)) {
@@ -158,6 +160,7 @@ public class MHDsend {
 			}
 			if (cl.hasOption("document-uid")) {
 				String tmpOID = cl.getOptionValue("document-uid");
+				logger.info("tmpOID :{}", tmpOID);
 				if (!checkOID(tmpOID)) {
 					error = true;
 					logger.info("Document UID Error : {}", cl.getOptionValue("document-uid"));
@@ -173,6 +176,8 @@ public class MHDsend {
 			}
 			else {
 				main.document_uid = newOID();
+				optMap.put("document_uid", main.document_uid);
+				logger.info("document_uid : {}", main.document_uid);
 			}
 
 			if (cl.hasOption("category")) {
@@ -209,8 +214,9 @@ public class MHDsend {
 				}
 			}
 			else {
-				Code code = new Code();
+				Code code = new Code(null, null, null);
 				main.facility = code;
+				optMap.put("facility", main.facility);
 			}
 			if (cl.hasOption("practice")) {
 				if (!checkCode(cl.getOptionValue("practice"))) {
@@ -224,8 +230,9 @@ public class MHDsend {
 				}
 			}
 			else {
-				Code code = new Code();
+				Code code = new Code(null, null, null);
 				main.practice = code;
+				optMap.put("practice", main.practice);
 			}
 			if (cl.hasOption("event")) {
 				if (!checkCode(cl.getOptionValue("event"))) {
@@ -239,8 +246,9 @@ public class MHDsend {
 				}
 			}
 			else {
-				Code code = new Code();
+				Code code = new Code(null, null, null);
 				main.event = code;
+				optMap.put("event", main.event);
 			}
 			if (cl.hasOption("manifest-type")) {
 				if (!checkCode(cl.getOptionValue("manifest-type"))) {
@@ -257,29 +265,56 @@ public class MHDsend {
 				main.content_type = cl.getOptionValue("content-type");
 				optMap.put("content_type", main.content_type);
 			}
+			else {
+				error = true;
+				logger.info("Content_type Error : {}", cl.getOptionValue("content-type"));
+			}
 			if (cl.hasOption("patient-id")) {
+				logger.info("patient_id : ----------- {}", cl.getOptionValue("patient-id"));
 				main.patient_id = cl.getOptionValue("patient-id");
 				optMap.put("patient_id", main.patient_id);
+			}
+			else {
+				error = true;
+				logger.info("Patient_id-title Error : {}", cl.getOptionValue("patient-id"));
 			}
 			if (cl.hasOption("data-binary")) {
 				main.data_binary = cl.getOptionValue("data-binary");
 				optMap.put("data_binary", main.data_binary);
 			}
+			else {
+				error = true;
+				logger.info("Data_binary Error : {}", cl.getOptionValue("data-binary"));
+			}
 			if (cl.hasOption("manifest-title")) {
 				main.manifest_title = cl.getOptionValue("manifest-title");
 				optMap.put("manifest_title", main.manifest_title);
+			}
+			else {
+				error = true;
+				logger.info("Manifest-title Error : {}", cl.getOptionValue("manifest-title"));
 			}
 			if (cl.hasOption("document-title")) {
 				main.document_title = cl.getOptionValue("document-title");
 				optMap.put("document_title", main.document_title);
 			}
+			else {
+				optMap.put("document_title", null);
+			}
 			if (cl.hasOption("language")) {
 				main.language = cl.getOptionValue("language");
 				optMap.put("language", main.language);
 			}
+			else {
+				optMap.put("language", null);
+				logger.info("optmap:language: {}", optMap.get("language"));
+			}
 			if (cl.hasOption("manifest-status")) {
 				String tmpStatus = cl.getOptionValue("manifest-status");
 				main.manifest_status = Enumerations.DocumentReferenceStatus.fromCode(tmpStatus);
+				optMap.put("manifest_status", main.manifest_status);
+			}
+			else {
 				optMap.put("manifest_status", main.manifest_status);
 			}
 			if (cl.hasOption("document-status")) {
@@ -287,12 +322,18 @@ public class MHDsend {
 				main.document_status = Enumerations.DocumentReferenceStatus.fromCode(tmpStatus);
 				optMap.put("document_status", main.document_status);
 			}
+			else {
+				optMap.put("document_status", main.document_status);
+			}
+			main.source = newOID();
+			optMap.put("source", main.source);
 
 			if (error) {
 				System.exit(1);
 			}
 
 			FhirSend fhirSend = FhirSend.getInstance();
+			logger.info("optMap : {}", optMap.toString());
 			fhirSend.sendFhir(optMap);
 
 		} catch (ParseException e) {
@@ -304,7 +345,7 @@ public class MHDsend {
 		String[] tmp = tmpCode.split("\\^");
 		Code code;
 		if (tmp.length != 3) {
-			code = new Code(tmp[0], tmp[2]);
+			code = new Code(tmp[0], null, tmp[2]);
 		}
 		else {
 			code = new Code(tmp[0], tmp[1], tmp[2]);

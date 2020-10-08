@@ -16,6 +16,9 @@ public class Code {
 		this.codeValue = codeValue;
 		this.codeSystem = codeSystem;
 	}
+	public Code(String codeSystem){
+		this.codeSystem = codeSystem;
+	}
 	public Code(){}
 
 	public String getCodeValue(){
