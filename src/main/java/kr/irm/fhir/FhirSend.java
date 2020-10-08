@@ -225,7 +225,7 @@ public class FhirSend {
 		Code practice = (Code) options.get("practice");
 		if (practice.codeSystem != null) {
 			codeableConcept = setCodeable(practice);
-			drContext.setFacilityType(codeableConcept);
+			drContext.setPracticeSetting(codeableConcept);
 		}
 		Code event = (Code) options.get("event");
 		if (event.codeSystem != null) {
