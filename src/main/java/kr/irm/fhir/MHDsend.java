@@ -15,36 +15,45 @@ public class MHDsend {
 
 	private static final Logger logger = LoggerFactory.getLogger(MHDsend.class);
 
-	private String manifest_uuid;
-	private String binary_uuid;
-	private String document_uuid;
-	private String manifest_uid;
-	private String document_uid;
-
-	private Code category;
-	private Code type;
-	private Code manifest_type;
-	private Code facility;
-	private Code practice;
-	private Code event;
-	private String content_type;
-	private String patient_id;
-	private String data_binary;
-	private String language;
-	private String manifest_title;
-	private String document_title;
-	private String source;
-	private Enumerations.DocumentReferenceStatus manifest_status = Enumerations.DocumentReferenceStatus.CURRENT;
-	private Enumerations.DocumentReferenceStatus document_status = Enumerations.DocumentReferenceStatus.CURRENT;
 
 	public static final String UUID_Prefix = "urn:uuid:";
 	public static final String OID_Prefix = "urn:oid:";
 
-	public static boolean error;
 
 	public static void main(String[] args) {
+		boolean error;
+
+		String server_url = "http://sandwich-local.irm.kr/SDHServer/fhir/r4";
+		String oauth_token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJqdGkiOiJhZTM3NGMxNjYzMzgyYjRjMDFlODU1NjZkZWY4MGRkIiwiY2xpZW50X2lkIjoiZnJvbnQtdmwtZGV2MDciLCJpYXQiOjE1NjQ3NDc3ODcsImV4cCI6MTk5NDk5MTM4Nywic3ViIjoiOTJlOThiNDMtNmRjOS00OGI4LWIyYjYtOGIyZWRjOWFhNDMzIiwidXNlcm5hbWUiOiJhZG1pbkBpcm0ua3IiLCJpc3MiOiJmcm9udC12bC1kZXYuaXJtLmtyIiwic2NvcGUiOlsicmVmcmVzaFRva2VuIl0sImdyYW50X3R5cGUiOiJhdXRob3JpemF0aW9uX2NvZGUiLCJhdXRob3JpemF0aW9uX2NvZGUiOiI3YjhiM2JmMjFmNmJhZjYwZmVmZWJkMWJiNGI5OWU4IiwiZW1haWwiOiJhZG1pbkBpcm0ua3IifQ.p1KAekVf0eK9JTWaAc9-BuHUeSQyYx5j1nC9WBW4jmsLhGpccsCBCKw5V7mCF4acQEWL2oB5NgnkiAVoEFbC-6GNzKsh-SmKRZE__wBC6PIwuYKnlkuSVIgB0JYG6PUrfej2oLZiERgPnvAs8tQFDF9pBiE74dvPLg6UArtGoeH9IDCzBEGmLsf6ljNN3W7Zg_dBiwCq8chkVjjuNiv4oHMHoMw_HMnpeV2Z4CVl9mPo08Uf8_T9fvLrUlDllRVifxQbVQzA5BypJk3RHBshCoTGFhP1DynrrejjZ6AFUxfNZxOmhXyYtkBS_m6V9Z0nsX7CvAGbC21fy89ZaqvV8Q";
+
+		String manifest_uuid = null;
+		String binary_uuid = null;
+		String document_uuid = null;
+		String manifest_uid = null;
+		String document_uid = null;
+
+		Code category;
+		Code type;
+		Code manifest_type;
+		Code facility;
+		Code practice;
+		Code event;
+		String content_type;
+		String patient_id;
+		String data_binary;
+		String language;
+		String manifest_title;
+		String document_title;
+		String source;
+		Enumerations.DocumentReferenceStatus manifest_status = Enumerations.DocumentReferenceStatus.CURRENT;
+		Enumerations.DocumentReferenceStatus document_status = Enumerations.DocumentReferenceStatus.CURRENT;
+
 		error = false;
 		Options opts = new Options();
+		//Header
+		opts.addOption("o", "oauth-token", true, "OAuth Token");
+		opts.addOption("s", "server-url", true, "Server URL");
+
 		//Required(auto)
 		opts.addOption(null, "manifest-uuid", true, "DocumentManifest Identifier Value");
 		opts.addOption(null, "document-uuid", true, "DocumentReference Identifier Value");
@@ -73,260 +82,260 @@ public class MHDsend {
 
 		CommandLineParser parser = new DefaultParser();
 		try {
-			MHDsend main = new MHDsend();
 			CommandLine cl = parser.parse(opts, args);
 			Map<String, Object> optMap = new HashMap<>();
+			//Server-url
+			if (cl.hasOption("server-url")) {
+				server_url = cl.getOptionValue("server-url");
+				optMap.put("server_url", server_url);
+			} else {
+				optMap.put("server_url", server_url);
+			}
+			//OAuth token
+			if (cl.hasOption("oauth-token")) {
+				server_url = cl.getOptionValue("oauth-token");
+				optMap.put("oauth_token", oauth_token);
+			} else {
+				optMap.put("oauth_token", oauth_token);
+			}
 
 			//manifest-uuid
 			if (cl.hasOption("manifest-uuid")) {
 				String tmpUUID = cl.getOptionValue("manifest-uuid");
 				if (!checkUUID(tmpUUID)) {
 					error = true;
-					logger.info("Manifest UUID Error : {}", cl.getOptionValue("manifest-uuid"));
-				}
-				else {
+					logger.error("Manifest UUID Error : {}", cl.getOptionValue("manifest-uuid"));
+				} else {
 					if (!tmpUUID.startsWith(UUID_Prefix)) {
-						main.manifest_uuid = UUID_Prefix + tmpUUID;
+						manifest_uuid = UUID_Prefix + tmpUUID;
+					} else {
+						manifest_uuid = tmpUUID;
 					}
-					else {
-						main.manifest_uuid = tmpUUID;
-					}
+				optMap.put("manifest_uuid", manifest_uuid);
 				}
-				optMap.put("manifest_uuid", main.manifest_uuid);
+			} else {
+				manifest_uuid = newUUID();
+				optMap.put("manifest_uuid", manifest_uuid);
 			}
-			else {
-				main.manifest_uuid = newUUID();
-				optMap.put("manifest_uuid", main.manifest_uuid);
-			}
+
 			if (cl.hasOption("document-uuid")) {
 				String tmpUUID = cl.getOptionValue("document-uuid");
 				if (!checkUUID(tmpUUID)) {
 					error = true;
 					logger.info("Document UUID Error : {}", cl.getOptionValue("document-uuid"));
-				}
-				else {
+				} else {
 					if (!tmpUUID.startsWith(UUID_Prefix)) {
-						main.document_uuid = UUID_Prefix + tmpUUID;
+						document_uuid = UUID_Prefix + tmpUUID;
+					} else {
+						document_uuid = tmpUUID;
 					}
-					else {
-						main.document_uuid = tmpUUID;
-					}
+				optMap.put("document_uuid", document_uuid);
 				}
-				optMap.put("document_uuid", main.document_uuid);
+			} else {
+				document_uuid = newUUID();
+				optMap.put("document_uuid", document_uuid);
 			}
-			else {
-				main.document_uuid = newUUID();
-				optMap.put("document_uuid", main.document_uuid);
-			}
+
 			if (cl.hasOption("binary-uuid")) {
 				String tmpUUID = cl.getOptionValue("binary-uuid");
 				if (!checkUUID(tmpUUID)) {
 					error = true;
-					logger.info("Binary UUID Error : {}", cl.getOptionValue("binary-uuid"));
-				}
-				else {
+					logger.error("Binary UUID Error : {}", cl.getOptionValue("binary-uuid"));
+				} else {
 					if (!tmpUUID.startsWith(UUID_Prefix)) {
-						main.binary_uuid = UUID_Prefix + tmpUUID;
+						binary_uuid = UUID_Prefix + tmpUUID;
+					} else {
+						binary_uuid = tmpUUID;
 					}
-					else {
-						main.binary_uuid = tmpUUID;
-					}
+				optMap.put("binary_uuid", binary_uuid);
 				}
-				optMap.put("binary_uuid", main.binary_uuid);
+			} else {
+				binary_uuid = newUUID();
+				optMap.put("binary_uuid", binary_uuid);
 			}
-			else {
-				main.binary_uuid = newUUID();
-				optMap.put("binary_uuid", main.binary_uuid);
-			}
+
 			if (cl.hasOption("manifest-uid")) {
 				String tmpOID = cl.getOptionValue("manifest-uid");
 				if (!checkOID(tmpOID)) {
 					error = true;
-					logger.info("Manifest UID Error : {}", cl.getOptionValue("manifest-uid"));
-				}
-				else {
+					logger.error("Manifest UID Error : {}", cl.getOptionValue("manifest-uid"));
+				} else {
 					if (tmpOID.startsWith(OID_Prefix)) {
-						main.manifest_uid = tmpOID;
+						manifest_uid = tmpOID;
+					} else {
+						manifest_uid = OID_Prefix + tmpOID;
 					}
-					else {
-						main.manifest_uid = OID_Prefix + tmpOID;
-					}
+				optMap.put("manifest_uid", manifest_uid);
 				}
-				optMap.put("manifest_uid", main.manifest_uid);
+			} else {
+				manifest_uid = newOID();
+				optMap.put("manifest_uid", manifest_uid);
 			}
-			else {
-				main.manifest_uid = newOID();
-				optMap.put("manifest_uid", main.manifest_uid);
-			}
+
 			if (cl.hasOption("document-uid")) {
 				String tmpOID = cl.getOptionValue("document-uid");
 				logger.info("tmpOID :{}", tmpOID);
 				if (!checkOID(tmpOID)) {
 					error = true;
-					logger.info("Document UID Error : {}", cl.getOptionValue("document-uid"));
-				}
-				else {
+					logger.error("Document UID Error : {}", cl.getOptionValue("document-uid"));
+				} else {
 					if (tmpOID.startsWith(OID_Prefix)) {
-						main.document_uid = tmpOID;
+						document_uid = tmpOID;
+					} else {
+						document_uid = OID_Prefix + tmpOID;
 					}
-					else {
-						main.document_uid = OID_Prefix + tmpOID;
-					}
+				optMap.put("document_uid", document_uid);
 				}
-			}
-			else {
-				main.document_uid = newOID();
-				optMap.put("document_uid", main.document_uid);
-				logger.info("document_uid : {}", main.document_uid);
+			} else {
+				document_uid = newOID();
+				optMap.put("document_uid", document_uid);
+				logger.info("document_uid : {}", document_uid);
 			}
 
 			if (cl.hasOption("category")) {
 				if (!checkCode(cl.getOptionValue("category"))) {
 					error = true;
-					logger.info("Category Error : {}", cl.getOptionValue("category"));
-				}
-				else {
+					logger.error("Category Error : {}", cl.getOptionValue("category"));
+				} else {
 					Code code = splitCode(cl.getOptionValue("category"));
-					main.category = code;
-					optMap.put("category", main.category);
+					category = code;
+					optMap.put("category", category);
 				}
 			}
+
 			if (cl.hasOption("type")) {
 				if (!checkCode(cl.getOptionValue("type"))) {
 					error = true;
-					logger.info("Type Error : {}", cl.getOptionValue("type"));
-				}
-				else {
+					logger.error("Type Error : {}", cl.getOptionValue("type"));
+				} else {
 					Code code = splitCode(cl.getOptionValue("type"));
-					main.type = code;
-					optMap.put("type", main.type);
+					type = code;
+					optMap.put("type", type);
 				}
 			}
+
 			if (cl.hasOption("facility")) {
 				if (!checkCode(cl.getOptionValue("facility"))) {
 					error = true;
 					logger.info("Facility Error : {}", cl.getOptionValue("facility"));
-				}
-				else {
+				} else {
 					Code code = splitCode(cl.getOptionValue("facility"));
-					main.facility = code;
-					optMap.put("facility", main.facility);
+					facility = code;
+					optMap.put("facility", facility);
 				}
-			}
-			else {
+			} else {
 				Code code = new Code(null, null, null);
-				main.facility = code;
-				optMap.put("facility", main.facility);
+				facility = code;
+				optMap.put("facility", facility);
 			}
+
 			if (cl.hasOption("practice")) {
 				if (!checkCode(cl.getOptionValue("practice"))) {
 					error = true;
-					logger.info("Practice Error : {}", cl.getOptionValue("practice"));
-				}
-				else {
+					logger.error("Practice Error : {}", cl.getOptionValue("practice"));
+				} else {
 					Code code = splitCode(cl.getOptionValue("practice"));
-					main.practice = code;
-					optMap.put("practice", main.practice);
+					practice = code;
+					optMap.put("practice", practice);
 				}
-			}
-			else {
+			} else {
 				Code code = new Code(null, null, null);
-				main.practice = code;
-				optMap.put("practice", main.practice);
+				practice = code;
+				optMap.put("practice", practice);
 			}
+
 			if (cl.hasOption("event")) {
 				if (!checkCode(cl.getOptionValue("event"))) {
 					error = true;
-					logger.info("Event Error : {}", cl.getOptionValue("event"));
-				}
-				else {
+					logger.error("Event Error : {}", cl.getOptionValue("event"));
+				} else {
 					Code code = splitCode(cl.getOptionValue("event"));
-					main.event = code;
-					optMap.put("event", main.event);
+					event = code;
+					optMap.put("event", event);
 				}
-			}
-			else {
+			} else {
 				Code code = new Code(null, null, null);
-				main.event = code;
-				optMap.put("event", main.event);
+				event = code;
+				optMap.put("event", event);
 			}
+
 			if (cl.hasOption("manifest-type")) {
 				if (!checkCode(cl.getOptionValue("manifest-type"))) {
 					error = true;
-					logger.info("Manifest-type Error : {}", cl.getOptionValue("manifest-type"));
-				}
-				else {
+					logger.error("Manifest-type Error : {}", cl.getOptionValue("manifest-type"));
+				} else {
 					Code code = splitCode(cl.getOptionValue("manifest-type"));
-					main.manifest_type = code;
-					optMap.put("manifest_type", main.manifest_type);
+					manifest_type = code;
+					optMap.put("manifest_type", manifest_type);
 				}
 			}
+
 			if (cl.hasOption("content-type")) {
-				main.content_type = cl.getOptionValue("content-type");
-				optMap.put("content_type", main.content_type);
-			}
-			else {
+				content_type = cl.getOptionValue("content-type");
+				optMap.put("content_type", content_type);
+			} else {
 				error = true;
-				logger.info("Content_type Error : {}", cl.getOptionValue("content-type"));
+				logger.error("Content_type Error : {}", cl.getOptionValue("content-type"));
 			}
+
 			if (cl.hasOption("patient-id")) {
 				logger.info("patient_id : ----------- {}", cl.getOptionValue("patient-id"));
-				main.patient_id = cl.getOptionValue("patient-id");
-				optMap.put("patient_id", main.patient_id);
-			}
-			else {
+				patient_id = cl.getOptionValue("patient-id");
+				optMap.put("patient_id", patient_id);
+			} else {
 				error = true;
-				logger.info("Patient_id-title Error : {}", cl.getOptionValue("patient-id"));
+				logger.error("Patient_id-title Error : {}", cl.getOptionValue("patient-id"));
 			}
+
 			if (cl.hasOption("data-binary")) {
-				main.data_binary = cl.getOptionValue("data-binary");
-				optMap.put("data_binary", main.data_binary);
-			}
-			else {
+				data_binary = cl.getOptionValue("data-binary");
+				optMap.put("data_binary", data_binary);
+			} else {
 				error = true;
-				logger.info("Data_binary Error : {}", cl.getOptionValue("data-binary"));
+				logger.error("Data_binary Error : {}", cl.getOptionValue("data-binary"));
 			}
+
 			if (cl.hasOption("manifest-title")) {
-				main.manifest_title = cl.getOptionValue("manifest-title");
-				optMap.put("manifest_title", main.manifest_title);
-			}
-			else {
+				manifest_title = cl.getOptionValue("manifest-title");
+				optMap.put("manifest_title", manifest_title);
+			} else {
 				error = true;
-				logger.info("Manifest-title Error : {}", cl.getOptionValue("manifest-title"));
+				logger.error("Manifest-title Error : {}", cl.getOptionValue("manifest-title"));
 			}
+
 			if (cl.hasOption("document-title")) {
-				main.document_title = cl.getOptionValue("document-title");
-				optMap.put("document_title", main.document_title);
-			}
-			else {
+				document_title = cl.getOptionValue("document-title");
+				optMap.put("document_title", document_title);
+			} else {
 				optMap.put("document_title", null);
 			}
+
 			if (cl.hasOption("language")) {
-				main.language = cl.getOptionValue("language");
-				optMap.put("language", main.language);
-			}
-			else {
+				language = cl.getOptionValue("language");
+				optMap.put("language", language);
+			} else {
 				optMap.put("language", null);
 				logger.info("optmap:language: {}", optMap.get("language"));
 			}
+
 			if (cl.hasOption("manifest-status")) {
 				String tmpStatus = cl.getOptionValue("manifest-status");
-				main.manifest_status = Enumerations.DocumentReferenceStatus.fromCode(tmpStatus);
-				optMap.put("manifest_status", main.manifest_status);
+				manifest_status = Enumerations.DocumentReferenceStatus.fromCode(tmpStatus);
+				optMap.put("manifest_status", manifest_status);
+			} else {
+				optMap.put("manifest_status", manifest_status);
 			}
-			else {
-				optMap.put("manifest_status", main.manifest_status);
-			}
+
 			if (cl.hasOption("document-status")) {
 				String tmpStatus = cl.getOptionValue("document-status");
-				main.document_status = Enumerations.DocumentReferenceStatus.fromCode(tmpStatus);
-				optMap.put("document_status", main.document_status);
+				document_status = Enumerations.DocumentReferenceStatus.fromCode(tmpStatus);
+				optMap.put("document_status", document_status);
+			} else {
+				optMap.put("document_status", document_status);
 			}
-			else {
-				optMap.put("document_status", main.document_status);
-			}
-			main.source = newOID();
-			optMap.put("source", main.source);
+
+			source = newOID();
+			optMap.put("source", source);
 
 			if (error) {
 				System.exit(1);
@@ -346,8 +355,7 @@ public class MHDsend {
 		Code code;
 		if (tmp.length != 3) {
 			code = new Code(tmp[0], null, tmp[2]);
-		}
-		else {
+		} else {
 			code = new Code(tmp[0], tmp[1], tmp[2]);
 		}
 		return code;
@@ -368,12 +376,11 @@ public class MHDsend {
 		if (oidValue == null || oidValue.isEmpty()) {
 			logger.info("OID is null");
 			return false;
-		}
-		else {
+		} else {
 			for (int i = 0; i < oidValue.length(); i++) {
 				char ascii = oidValue.charAt(i);
 				if ((ascii < '0' || ascii > '9') && ascii != '.') {
-					logger.info("checkOID error : {}", oidValue);
+					logger.error("checkOID error : {}", oidValue);
 					return false;
 				}
 			}
@@ -385,24 +392,20 @@ public class MHDsend {
 		if (!uuidValue.startsWith(UUID_Prefix)) {
 			if (isUUID(uuidValue)) {
 				return true;
+			} else {
+				logger.error("checkUUID error : {}", uuidValue);
+				return false;
 			}
-			else {
-				logger.info("checkUUID error : {}", uuidValue);
-			   return false;
-            }
-		}
-		else if (uuidValue.startsWith(UUID_Prefix)) {
+		} else if (uuidValue.startsWith(UUID_Prefix)) {
 			if (isUUID(uuidValue.substring(9))) {
 				return true;
+			} else {
+				logger.error("checkUUID error : {}", uuidValue);
+				return false;
 			}
-			else {
-				logger.info("checkUUID error : {}", uuidValue);
-			   return false;
-            }
+		} else {
+			return false;
 		}
-		else {
-		   return false;
-        }
 	}
 
 	public static boolean isUUID(String string) {

@@ -23,7 +23,9 @@ public class FhirSend {
 	private static final Logger logger = LoggerFactory.getLogger(FhirSend.class);
 
 	private static FhirSend uniqueInstance = new FhirSend();
+
 	private FhirSend() { }
+
 	public static synchronized FhirSend getInstance() {
 		if (uniqueInstance == null) {
 			uniqueInstance = new FhirSend();
@@ -35,15 +37,15 @@ public class FhirSend {
 		"http://ihe.net/fhir/StructureDefinition/IHE_MHD_Provide_Comprehensive_DocumentBundle";
 	private static final String PROFILE_ITI_65_MINIMAL_METADATA =
 		"http://ihe.net/fhir/StructureDefinition/IHE_MHD_Provide_Minimal_DocumentBundle";
-	private static final String URL = "http://sandwich-local.irm.kr/SDHServer/fhir/r4";
-	private static final String OAUTHTOKEN =
-		"eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJqdGkiOiJhZTM3NGMxNjYzMzgyYjRjMDFlODU1NjZkZWY4MGRkIiwiY2xpZW50X2lkIjoiZnJvbnQtdmwtZGV2MDciLCJpYXQiOjE1NjQ3NDc3ODcsImV4cCI6MTk5NDk5MTM4Nywic3ViIjoiOTJlOThiNDMtNmRjOS00OGI4LWIyYjYtOGIyZWRjOWFhNDMzIiwidXNlcm5hbWUiOiJhZG1pbkBpcm0ua3IiLCJpc3MiOiJmcm9udC12bC1kZXYuaXJtLmtyIiwic2NvcGUiOlsicmVmcmVzaFRva2VuIl0sImdyYW50X3R5cGUiOiJhdXRob3JpemF0aW9uX2NvZGUiLCJhdXRob3JpemF0aW9uX2NvZGUiOiI3YjhiM2JmMjFmNmJhZjYwZmVmZWJkMWJiNGI5OWU4IiwiZW1haWwiOiJhZG1pbkBpcm0ua3IifQ.p1KAekVf0eK9JTWaAc9-BuHUeSQyYx5j1nC9WBW4jmsLhGpccsCBCKw5V7mCF4acQEWL2oB5NgnkiAVoEFbC-6GNzKsh-SmKRZE__wBC6PIwuYKnlkuSVIgB0JYG6PUrfej2oLZiERgPnvAs8tQFDF9pBiE74dvPLg6UArtGoeH9IDCzBEGmLsf6ljNN3W7Zg_dBiwCq8chkVjjuNiv4oHMHoMw_HMnpeV2Z4CVl9mPo08Uf8_T9fvLrUlDllRVifxQbVQzA5BypJk3RHBshCoTGFhP1DynrrejjZ6AFUxfNZxOmhXyYtkBS_m6V9Z0nsX7CvAGbC21fy89ZaqvV8Q";
 	private static final FhirContext ctx = FhirContext.forR4();
-	private static final IGenericClient client = ctx.newRestfulGenericClient(URL);
+	private static IGenericClient client = null;
 
 	void sendFhir(Map<String, Object> options) {
 		// Setting (Header)
-		BearerTokenAuthInterceptor authInterceptor = new BearerTokenAuthInterceptor(OAUTHTOKEN);
+		String serverUrl = (String) options.get("server_url");
+		String oauthToken = (String) options.get("oauth_token");
+		client = ctx.newRestfulGenericClient(serverUrl);
+		BearerTokenAuthInterceptor authInterceptor = new BearerTokenAuthInterceptor(oauthToken);
 		client.registerInterceptor(authInterceptor);
 		logger.info("Setting Header");
 
@@ -164,13 +166,13 @@ public class FhirSend {
 		//type (Required)
 		Code type = (Code) options.get("type");
 		CodeableConcept codeableConcept;
-		codeableConcept = setCodeable(type);
+		codeableConcept = setCodeableConcept(type);
 		reference.setType(codeableConcept);
 		logger.info("Document type : {}", type.toString());
 
 		//category (Required)
 		Code category = (Code) options.get("category");
-		codeableConcept = setCodeable(category);
+		codeableConcept = setCodeableConcept(category);
 		List<CodeableConcept> codeableConceptList = new ArrayList<>();
 		codeableConceptList.add(codeableConcept);
 		reference.setCategory(codeableConceptList);
@@ -196,18 +198,9 @@ public class FhirSend {
 		List<DocumentReference.DocumentReferenceContentComponent> drContentList = new ArrayList<>();
 		Attachment attachment = new Attachment();
 		String language = (String) options.get("language");
-		if (language == null) {
-			attachment
-				.setContentType((String) options.get("content_type"))
-				.setUrl(binaryUUid)
-				.setSize(0);
-		}
-		else {
-			attachment
-				.setContentType((String) options.get("content_type"))
-				.setLanguage(language)
-				.setUrl(binaryUUid)
-				.setSize(0);
+		attachment.setContentType((String) options.get("content_type")).setUrl(binaryUUid).setSize(0);
+		if (language != null) {
+			attachment.setLanguage(language);
 		}
 		drContentList.add(new DocumentReference.DocumentReferenceContentComponent().setAttachment(attachment));
 		reference.setContent(drContentList);
@@ -219,18 +212,18 @@ public class FhirSend {
 		Code facility = (Code) options.get("facility");
 		logger.info("facility : {}", facility);
 		if (facility.codeSystem != null) {
-			codeableConcept = setCodeable(facility);
+			codeableConcept = setCodeableConcept(facility);
 			drContext.setFacilityType(codeableConcept);
 		}
 		Code practice = (Code) options.get("practice");
 		if (practice.codeSystem != null) {
-			codeableConcept = setCodeable(practice);
+			codeableConcept = setCodeableConcept(practice);
 			drContext.setPracticeSetting(codeableConcept);
 		}
 		Code event = (Code) options.get("event");
 		if (event.codeSystem != null) {
 			codeableConceptList = new ArrayList<>();
-			codeableConcept = setCodeable(event);
+			codeableConcept = setCodeableConcept(event);
 			codeableConceptList.add(codeableConcept);
 			drContext.setEvent(codeableConceptList);
 		}
@@ -247,7 +240,6 @@ public class FhirSend {
 		//Document Manifest uuid
 		manifest.setId((String) options.get("manifest_uuid"));
 		logger.info("Manifest UUID : {}", manifest.getId());
-
 		// MasterIdentifier (Required)
 		Identifier identifier = new Identifier();
 		identifier
@@ -271,7 +263,7 @@ public class FhirSend {
 		//type (Required)
 		Code type = (Code) options.get("manifest_type");
 		CodeableConcept codeableConcept;
-		codeableConcept = setCodeable(type);
+		codeableConcept = setCodeableConcept(type);
 		manifest.setType(codeableConcept);
 		logger.info("Manifest type : {}", manifest.getType());
 
@@ -300,7 +292,7 @@ public class FhirSend {
 		return (manifest);
 	}
 
-	private CodeableConcept setCodeable(Code code) {
+	private CodeableConcept setCodeableConcept(Code code) {
 		CodeableConcept codeableConcept = new CodeableConcept();
 		if (code.displayName.isEmpty()) {
 			codeableConcept.addCoding()
@@ -317,7 +309,7 @@ public class FhirSend {
 	}
 
 	private byte[] writeToByte(String file) {
-		File f = new File("res/"+file);
+		File f = new File("res/" + file);
 		FileInputStream fin = null;
 		FileChannel ch = null;
 		byte[] bytes = new byte[0];
