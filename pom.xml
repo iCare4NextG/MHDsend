@@ -1,75 +1,33 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>kr.irm.util</groupId>
+    <artifactId>MHDSend</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
 
-	<groupId>kr.irm.util</groupId>
-	<artifactId>hapi-fhirstarters-client-skeleton</artifactId>
-	<version>5.0.0</version>
-	<packaging>jar</packaging>
+    <name>MHDSend</name>
+    <url>http://maven.apache.org</url>
 
-	<name>HAPI FHIR Skeleton Project (Client)</name>
-
-   <properties>
-      <hapifhir_version>5.0.2</hapifhir_version>
-   </properties>
-
-   <repositories>
-		<repository>
-			<id>oss-snapshots</id>
-			<snapshots>
-				<enabled>true</enabled>
-			</snapshots>
-			<url>https://oss.sonatype.org/content/repositories/snapshots/</url>
-		</repository>
-	</repositories>
-
-	<dependencies>
-
-		<!-- This dependency includes the core HAPI-FHIR classes -->
-		<dependency>
-			<groupId>ca.uhn.hapi.fhir</groupId>
-			<artifactId>hapi-fhir-base</artifactId>
-			<version>${hapifhir_version}</version>
-		</dependency>
-      
-      <!-- Include the client -->
-     	<dependency>
-			<groupId>ca.uhn.hapi.fhir</groupId>
-			<artifactId>hapi-fhir-client</artifactId>
-			<version>${hapifhir_version}</version>
-      </dependency>
-
-		<!-- At least one "structures" JAR must also be included -->
-		<dependency>
-			<groupId>ca.uhn.hapi.fhir</groupId>
-			<artifactId>hapi-fhir-structures-r4</artifactId>
-			<version>${hapifhir_version}</version>
-		</dependency>
-
-		<!-- 
-		HAPI-FHIR uses Logback for logging support. The logback library is included 
-		automatically by Maven as a part of the hapi-fhir-base dependency, but you 
-		also need to include a logging library. Logback is used here, but log4j
-		would also be fine. 
-		-->
-		<dependency>
-			<groupId>ch.qos.logback</groupId>
-			<artifactId>logback-classic</artifactId>
-			<version>1.1.7</version>
-		</dependency>
-
-	</dependencies>
+    <properties>
+        <hapifhir_version>4.0.3</hapifhir_version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
 
 	<build>
-		
+		<sourceDirectory>src/main/java</sourceDirectory>
+		<resources>
+			<resource>
+				<directory>src/main/resources</directory>
+				<excludes>
+					<exclude>**/*.java</exclude>
+				</excludes>
+			</resource>
+		</resources>
 		<plugins>
-			<!-- 
-			Tell Maven which Java source version you want to use
-			-->
 			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.3</version>
+				<version>3.1</version>
 				<configuration>
 					<source>1.8</source>
 					<target>1.8</target>
@@ -79,11 +37,13 @@
 				<artifactId>maven-assembly-plugin</artifactId>
 				<version>2.5.3</version>
 				<configuration>
-					<descriptor>src/main/assembly/bin.xml</descriptor>
+					<descriptors>
+						<descriptor>src/main/assembly/bin.xml</descriptor>
+					</descriptors>
 				</configuration>
 				<executions>
 					<execution>
-						<id>make-assembly</id>
+						<id>create-archive</id>
 						<phase>package</phase>
 						<goals>
 							<goal>single</goal>
@@ -94,4 +54,66 @@
 		</plugins>
 	</build>
 
+    <repositories>
+		<repository>
+			<id>local-repository</id>
+			<name>local-repository</name>
+		<url>file://${project.basedir}/lib</url>
+		</repository>
+	</repositories>
+
+
+
+    <dependencies>
+<!--		<dependency>-->
+<!--			<groupId>org.apache.maven.plugins</groupId>-->
+<!--			<artifactId>maven-assembly-plugin</artifactId>-->
+<!--			<version>2.5.3</version>-->
+<!--		</dependency>-->
+
+<!--		<dependency>-->
+<!--			<groupId>org.apache.maven.plugins</groupId>-->
+<!--			<artifactId>maven-resources-plugin</artifactId>-->
+<!--			<version>2.6</version>-->
+<!--		</dependency>-->
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>3.8.1</version>
+			<scope>test</scope>
+		</dependency>
+        <!-- This dependency includes the core HAPI-FHIR classes -->
+        <dependency>
+            <groupId>ca.uhn.hapi.fhir</groupId>
+            <artifactId>hapi-fhir-base</artifactId>
+            <version>${hapifhir_version}</version>
+        </dependency>
+        <!-- Include the client -->
+        <dependency>
+            <groupId>ca.uhn.hapi.fhir</groupId>
+            <artifactId>hapi-fhir-client</artifactId>
+            <version>${hapifhir_version}</version>
+        </dependency>
+        <!-- At least one "structures" JAR must also be included -->
+        <dependency>
+            <groupId>ca.uhn.hapi.fhir</groupId>
+            <artifactId>hapi-fhir-structures-r4</artifactId>
+            <version>${hapifhir_version}</version>
+        </dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-cli</artifactId>
+			<version>1.4</version>
+		</dependency>
+		<dependency>
+			<groupId>ca.uhn.hapi.fhir</groupId>
+			<artifactId>hapi-fhir-base</artifactId>
+			<version>${hapifhir_version}</version>
+		</dependency>
+		<dependency>
+			<groupId>ca.uhn.hapi.fhir</groupId>
+			<artifactId>hapi-fhir-client</artifactId>
+			<version>${hapifhir_version}</version>
+		</dependency>
+	</dependencies>
 </project>

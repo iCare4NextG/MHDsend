@@ -14,11 +14,8 @@ import java.util.UUID;
 public class MHDsend {
 
 	private static final Logger logger = LoggerFactory.getLogger(MHDsend.class);
-
-
 	public static final String UUID_Prefix = "urn:uuid:";
 	public static final String OID_Prefix = "urn:oid:";
-
 
 	public static void main(String[] args) {
 		boolean error;
@@ -93,7 +90,7 @@ public class MHDsend {
 			}
 			//OAuth token
 			if (cl.hasOption("oauth-token")) {
-				server_url = cl.getOptionValue("oauth-token");
+				oauth_token = cl.getOptionValue("oauth-token");
 				optMap.put("oauth_token", oauth_token);
 			} else {
 				optMap.put("oauth_token", oauth_token);
@@ -197,7 +194,7 @@ public class MHDsend {
 					error = true;
 					logger.error("Category Error : {}", cl.getOptionValue("category"));
 				} else {
-					Code code = splitCode(cl.getOptionValue("category"));
+					Code code = Code.splitCode(cl.getOptionValue("category"));
 					category = code;
 					optMap.put("category", category);
 				}
@@ -208,7 +205,7 @@ public class MHDsend {
 					error = true;
 					logger.error("Type Error : {}", cl.getOptionValue("type"));
 				} else {
-					Code code = splitCode(cl.getOptionValue("type"));
+					Code code = Code.splitCode(cl.getOptionValue("type"));
 					type = code;
 					optMap.put("type", type);
 				}
@@ -219,7 +216,7 @@ public class MHDsend {
 					error = true;
 					logger.info("Facility Error : {}", cl.getOptionValue("facility"));
 				} else {
-					Code code = splitCode(cl.getOptionValue("facility"));
+					Code code = Code.splitCode(cl.getOptionValue("facility"));
 					facility = code;
 					optMap.put("facility", facility);
 				}
@@ -234,7 +231,7 @@ public class MHDsend {
 					error = true;
 					logger.error("Practice Error : {}", cl.getOptionValue("practice"));
 				} else {
-					Code code = splitCode(cl.getOptionValue("practice"));
+					Code code = Code.splitCode(cl.getOptionValue("practice"));
 					practice = code;
 					optMap.put("practice", practice);
 				}
@@ -249,7 +246,7 @@ public class MHDsend {
 					error = true;
 					logger.error("Event Error : {}", cl.getOptionValue("event"));
 				} else {
-					Code code = splitCode(cl.getOptionValue("event"));
+					Code code = Code.splitCode(cl.getOptionValue("event"));
 					event = code;
 					optMap.put("event", event);
 				}
@@ -264,7 +261,7 @@ public class MHDsend {
 					error = true;
 					logger.error("Manifest-type Error : {}", cl.getOptionValue("manifest-type"));
 				} else {
-					Code code = splitCode(cl.getOptionValue("manifest-type"));
+					Code code = Code.splitCode(cl.getOptionValue("manifest-type"));
 					manifest_type = code;
 					optMap.put("manifest_type", manifest_type);
 				}
@@ -343,23 +340,12 @@ public class MHDsend {
 			}
 
 			FhirSend fhirSend = FhirSend.getInstance();
-			logger.info("optMap : {}", optMap.toString());
+//			logger.info("optMap : {}", optMap.toString());
 			fhirSend.sendFhir(optMap);
 
 		} catch (ParseException e) {
 			e.printStackTrace();
 		}
-	}
-
-	private static Code splitCode(String tmpCode) {
-		String[] tmp = tmpCode.split("\\^");
-		Code code;
-		if (tmp.length != 3) {
-			code = new Code(tmp[0], null, tmp[2]);
-		} else {
-			code = new Code(tmp[0], tmp[1], tmp[2]);
-		}
-		return code;
 	}
 
 	private static boolean checkCode(String code) {

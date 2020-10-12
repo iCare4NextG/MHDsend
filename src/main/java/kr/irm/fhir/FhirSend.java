@@ -3,15 +3,11 @@ package kr.irm.fhir;
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.client.interceptor.BearerTokenAuthInterceptor;
-import org.apache.commons.io.FileUtils;
 import org.hl7.fhir.r4.model.*;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -42,8 +38,8 @@ public class FhirSend {
 
 	void sendFhir(Map<String, Object> options) {
 		// Setting (Header)
-		String serverUrl = (String) options.get("server_url");
-		String oauthToken = (String) options.get("oauth_token");
+		String serverUrl = (String) options.get("server-url"); //change : http or https check
+		String oauthToken = (String) options.get("oauth-token"); //check방법
 		client = ctx.newRestfulGenericClient(serverUrl);
 		BearerTokenAuthInterceptor authInterceptor = new BearerTokenAuthInterceptor(oauthToken);
 		client.registerInterceptor(authInterceptor);
@@ -63,35 +59,40 @@ public class FhirSend {
 		addBinaryBundle(binary, bundle);
 
 		String patientResourceId = getPatientResourceId((String) options.get("patient_id"));
-//		String patientResourceId = (String) options.get("patient_id");
 		logger.info("patient_id : {}", patientResourceId);
 
-		logger.info("go provideRefer : {}, {}------------- {}", patientResourceId, binary.getId(), options.toString());
+		//change : 아래의 provide --> create
+		//FIXME
+		logger.info("creating Document Reference : {}, {}, ------------- {}", patientResourceId, binary.getId());
 		DocumentReference reference = provideReference(patientResourceId, binary.getId(), options);
 		addReferenceBundle(reference, bundle);
 
-		logger.info("go provideMani : {}, {}------------- {}", patientResourceId, reference.getId(), options.toString());
+		logger.info("creating Document Manifest : {}, {}, ------------- {}", patientResourceId, reference.getId());
 		DocumentManifest manifest = provideManifest(patientResourceId, reference.getId(), options);
 		addManifestBundle(manifest, bundle);
 
 		// Upload request
-		System.out.println(ctx.newJsonParser().setPrettyPrint(true).encodeResourceToString(bundle));
+//		System.out.println(ctx.newJsonParser().setPrettyPrint(true).encodeResourceToString(bundle));
 
 		// Upload response
 		Bundle responseBundle = client.transaction().withBundle(bundle).execute();
-		System.out.println(ctx.newJsonParser().setPrettyPrint(true).encodeResourceToString(responseBundle));
+//		System.out.println(ctx.newJsonParser().setPrettyPrint(true).encodeResourceToString(responseBundle));
 
 	}
 
 	private String getPatientResourceId(String patient_id) {
-		logger.info("patient_id : {}", patient_id);
+		//ServerUrl
+		//FIXME
 		String patientUrl = "http://sandwich-local.irm.kr/SDHServer/fhir/r4/Patient?identifier=" + patient_id;//"5c3f536e-fed9-4251-8b1a-e5d18fce6fc1";
 		Bundle patient = client.search()
 			.byUrl(patientUrl)
 			.returnBundle(Bundle.class)
 			.execute();
+		//change : success or fail size (check or return check)
+		//getEntry ==1 일때만 r가능
+		//TODO
 		patient_id = patient.getEntry().get(0).getResource().getId().substring(8);
-		logger.info("patient!!!!!!!! : {}", patient_id);
+		logger.info("getPatientResourceId: {}", patient_id);
 		return patient_id;
 	}
 
@@ -111,7 +112,6 @@ public class FhirSend {
 		entry
 			.getRequest().setUrl("DocumentReference")
 			.setMethod(Bundle.HTTPVerb.POST);
-//      System.out.println("FULLUrl : " + reference.getIdElement().getValue());
 	}
 
 	private void addManifestBundle(DocumentManifest manifest, Bundle bundle) {
@@ -121,7 +121,6 @@ public class FhirSend {
 		entry
 			.getRequest().setUrl("DocumentManifest")
 			.setMethod(Bundle.HTTPVerb.POST);
-//      System.out.println("FULLUrl : " + manifest.getIdElement().getValue());
 	}
 
 	private Binary provideBinary(Map<String, Object> options) {
@@ -141,57 +140,61 @@ public class FhirSend {
 		DocumentReference reference = new DocumentReference();
 		// DocumentReference uuid
 		reference.setId((String) options.get("document_uuid"));
-		logger.info("DocumentReference uuid : {}", reference.getId());
+		logger.info("DocumentReference.id = {}", reference.getId());
 
 		// MasterIdentifier (Required)
 		Identifier identifier = new Identifier();
 		identifier
 			.setSystem("urn:ietf:rfc:3986")
 			.setValue((String) options.get("document_uid"));
-		logger.info("Document MasterIdentifier system, uid : {}, {}", identifier.getSystem(), (String) options.get("document_uid"));
-		logger.info("Document MasterIdentifier system, uid : {}, {}", identifier.getSystem(), identifier.getValue());
 		reference.setMasterIdentifier(identifier);
+		logger.info("DocumentReference.masterIdentifier = {}, {}", reference.getMasterIdentifier().getSystem(), reference.getMasterIdentifier().getValue());
+		//FIXME logger 형식 변경 (통일)
 
 		// Identifier (Required)
 		reference.addIdentifier()
 			.setUse(Identifier.IdentifierUse.OFFICIAL)
 			.setSystem("urn:ietf:rfc:3986")
 			.setValue((String) options.get("document_uuid"));
-		logger.info("Document Identifier : {}", (String) options.get("document_uuid"));
+		logger.info("Document Identifier : {}, {}", reference.getIdentifier().get(0).getSystem(), reference.getIdentifier().get(0).getValue());
 
 		//status
 		reference.setStatus((Enumerations.DocumentReferenceStatus) options.get("document_status"));
-		logger.info("Document Status : {}", options.get("document_status"));
+		logger.info("Document Status : {}", reference.getStatus());
 
 		//type (Required)
 		Code type = (Code) options.get("type");
 		CodeableConcept codeableConcept;
-		codeableConcept = setCodeableConcept(type);
+		codeableConcept = createCodeableConcept(type);
 		reference.setType(codeableConcept);
-		logger.info("Document type : {}", type.toString());
+		logger.info("DocumentReference.type System : {}",
+			reference.getType().getCoding().get(0).getSystem());
+		logger.info("Document type Code : {}", reference.getType().getCoding().get(0).getCode());
+		logger.info("Document type Display : {}", reference.getType().getCoding().get(0).getDisplay());
+		//FIXME type log 한줄로 변경
 
 		//category (Required)
 		Code category = (Code) options.get("category");
-		codeableConcept = setCodeableConcept(category);
+		codeableConcept = createCodeableConcept(category);
 		List<CodeableConcept> codeableConceptList = new ArrayList<>();
 		codeableConceptList.add(codeableConcept);
 		reference.setCategory(codeableConceptList);
-		logger.info("Document type : {}", category.toString());
+		logger.info("Document category System : {}", reference.getCategory().get(0).getCoding().get(0).getSystem());
+		logger.info("Document category Code : {}", reference.getCategory().get(0).getCoding().get(0).getCode());
+		logger.info("Document category Display : {}", reference.getCategory().get(0).getCoding().get(0).getDisplay());
 
 		//subject (Required)
 		Reference subjectRefer = new Reference();
 		subjectRefer.setReference("Patient/" + patientResourceId);
 		reference.setSubject(subjectRefer);
-		logger.info("Document subject : {}", patientResourceId);
+		logger.info("DocumentReference.subject : {}", reference.getSubject().getId());
 
 		//Date
 		reference.setDate(new Date());
-
-		//title (Optional)
-		String documentTitle = ((String) options.get("document_title"));
-		logger.info("Document title : {}", reference.getDescription());
+		logger.info("Document date : {}", reference.getDate().toString());
 
 		//content (Required / Optional)
+		String documentTitle = ((String) options.get("document_title"));
 		List<DocumentReference.DocumentReferenceContentComponent> drContentList = new ArrayList<>();
 		Attachment attachment = new Attachment();
 		String language = (String) options.get("language");
@@ -201,32 +204,43 @@ public class FhirSend {
 		}
 		drContentList.add(new DocumentReference.DocumentReferenceContentComponent().setAttachment(attachment));
 		reference.setContent(drContentList);
-		logger.info("Document content : {}", reference.getContent());
+		logger.info("Document Content-type : {}", reference.getContent().get(0).getAttachment().getContentType());
+		logger.info("Document Url(binary-UUID) : {}", reference.getContent().get(0).getAttachment().getUrl());
+		logger.info("Document Title : {}", reference.getContent().get(0).getAttachment().getTitle());
 
 		//context (Optional)
 		DocumentReference.DocumentReferenceContextComponent drContext = new DocumentReference.DocumentReferenceContextComponent();
 
 		Code facility = (Code) options.get("facility");
-		logger.info("facility : {}", facility);
 		if (facility.codeSystem != null) {
-			codeableConcept = setCodeableConcept(facility);
+			codeableConcept = createCodeableConcept(facility);
 			drContext.setFacilityType(codeableConcept);
 		}
 		Code practice = (Code) options.get("practice");
 		if (practice.codeSystem != null) {
-			codeableConcept = setCodeableConcept(practice);
+			codeableConcept = createCodeableConcept(practice);
 			drContext.setPracticeSetting(codeableConcept);
 		}
 		Code event = (Code) options.get("event");
 		if (event.codeSystem != null) {
 			codeableConceptList = new ArrayList<>();
-			codeableConcept = setCodeableConcept(event);
+			codeableConcept = createCodeableConcept(event);
 			codeableConceptList.add(codeableConcept);
 			drContext.setEvent(codeableConceptList);
 		}
+		//FIXME event code option 여러개 받을 수 있게 하기.
+
 		if (!drContext.isEmpty()) {
 			reference.setContext(drContext);
-			logger.info("Document context : {}", reference.getContext());
+			logger.info("Document practice System : {}", reference.getContext().getPracticeSetting().getCoding().get(0).getSystem());
+			logger.info("Document practice Code : {}", reference.getContext().getPracticeSetting().getCoding().get(0).getCode());
+			logger.info("Document practice Display : {}", reference.getContext().getPracticeSetting().getCoding().get(0).getDisplay());
+			logger.info("Document facility System : {}", reference.getContext().getFacilityType().getCoding().get(0).getSystem());
+			logger.info("Document facility Code : {}", reference.getContext().getFacilityType().getCoding().get(0).getCode());
+			logger.info("Document facility Display : {}", reference.getContext().getFacilityType().getCoding().get(0).getDisplay());
+			logger.info("Document event System : {}", reference.getContext().getEvent().get(0).getCoding().get(0).getSystem());
+			logger.info("Document event Code : {}", reference.getContext().getEvent().get(0).getCoding().get(0).getCode());
+			logger.info("Document event Display : {}", reference.getContext().getEvent().get(0).getCoding().get(0).getDisplay());
 		}
 		return (reference);
 	}
@@ -243,14 +257,14 @@ public class FhirSend {
 			.setSystem("urn:ietf:rfc:3986")
 			.setValue((String) options.get("manifest_uid"));
 		manifest.setMasterIdentifier(identifier);
-		logger.info("Manifest MasterIdentifier : {}", manifest.getMasterIdentifier());
+		logger.info("Manifest MasterIdentifier system, uid : {}, {}", manifest.getMasterIdentifier().getSystem(), manifest.getMasterIdentifier().getValue());
 
 		// Identifier (Required)
 		manifest.addIdentifier()
 			.setUse(Identifier.IdentifierUse.OFFICIAL)
 			.setSystem("urn:ietf:rfc:3986")
 			.setValue((String) options.get("manifest_uuid"));
-		logger.info("Manifest identifier : {}", manifest.getIdentifier());
+		logger.info("Manifest Identifier : {}, {}, {}", manifest.getIdentifier().get(0).getUse(), manifest.getIdentifier().get(0).getSystem(), manifest.getIdentifier().get(0).getValue());
 
 
 		//status
@@ -260,36 +274,41 @@ public class FhirSend {
 		//type (Required)
 		Code type = (Code) options.get("manifest_type");
 		CodeableConcept codeableConcept;
-		codeableConcept = setCodeableConcept(type);
+		codeableConcept = createCodeableConcept(type);
 		manifest.setType(codeableConcept);
-		logger.info("Manifest type : {}", manifest.getType());
+		logger.info("Manifest type System : {}", manifest.getType().getCoding().get(0).getSystem());
+		logger.info("Manifest type Code : {}", manifest.getType().getCoding().get(0).getCode());
+		logger.info("Manifest type Display : {}", manifest.getType().getCoding().get(0).getDisplay());
+
 
 		//subject (Required)
 		Reference subjectRefer = new Reference();
 		subjectRefer.setReference("Patient/" + patientResourceId);
 		manifest.setSubject(subjectRefer);
-		logger.info("Manifest subject : {}", manifest.getSubject());
+		logger.info("Manifest subject : {}", manifest.getSubject().getId());
 
 		//created
 		manifest.setCreated(new Date());
+		logger.info("Manifest created : {}", manifest.getCreated().toString());
 
 		//source
 		manifest.setSource((String) options.get("source"));
+		logger.info("Manifest Source : {}", manifest.getSource().toString());
 
 		//description (Required)
 		manifest.setDescription((String) options.get("manifest_title"));
-		logger.info("Manifest title : {}", manifest.getDescription());
+		logger.info("Manifest title : {}", manifest.getDescription().toString());
 
 		//content
 		List<Reference> references = new ArrayList<>();
 		references.add(new Reference(referenceUUid));
 		manifest.setContent(references);
-		logger.info("Manifest content : {}", manifest.getContent());
+		logger.info("Manifest content(referenceUUID) : {}", manifest.getContent().get(0).getReference().toString());
 
 		return (manifest);
 	}
 
-	private CodeableConcept setCodeableConcept(Code code) {
+	private CodeableConcept createCodeableConcept(Code code) {
 		CodeableConcept codeableConcept = new CodeableConcept();
 		if (code.displayName.isEmpty()) {
 			codeableConcept.addCoding()
@@ -306,7 +325,7 @@ public class FhirSend {
 	}
 
 	private byte[] writeToByte(String file) {
-		File f = new File("res/" + file);
+		File f = new File(file);
 		FileInputStream fin = null;
 		FileChannel ch = null;
 		byte[] bytes = new byte[0];
@@ -314,12 +333,12 @@ public class FhirSend {
 			fin = new FileInputStream(f);
 			ch = fin.getChannel();
 			int size = (int) ch.size();
+			// 2기가까지만 가능
 			MappedByteBuffer buf = ch.map(FileChannel.MapMode.READ_ONLY, 0, size);
 			bytes = new byte[size];
 			buf.get(bytes);
 
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} finally {
 			try {

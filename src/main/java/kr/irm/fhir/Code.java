@@ -40,6 +40,18 @@ public class Code {
 		this.codeSystem = codeValue;
 	}
 
+
+	public static Code splitCode(String tmpCode) {
+		String[] tmp = tmpCode.split("\\^");
+		Code code;
+		if (tmp.length != 3) {
+			code = new Code(tmp[0], null, tmp[2]);
+		} else {
+			code = new Code(tmp[0], tmp[1], tmp[2]);
+		}
+		return code;
+	}
+
 	@Override
 	public String toString() {
 		return "Code{" +
