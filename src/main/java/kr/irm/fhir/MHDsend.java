@@ -284,7 +284,7 @@ public class MHDsend {
 				optMap.put("patient_id", patient_id);
 			} else {
 				error = true;
-				logger.error("Patient_id-title Error : {}", cl.getOptionValue("patient-id"));
+				logger.error("Patient_id Error : {}", cl.getOptionValue("patient-id"));
 			}
 
 			if (cl.hasOption("data-binary")) {
@@ -307,7 +307,8 @@ public class MHDsend {
 				document_title = cl.getOptionValue("document-title");
 				optMap.put("document_title", document_title);
 			} else {
-				optMap.put("document_title", null);
+				document_title = cl.getOptionValue("manifest-title");
+				optMap.put("document_title", document_title);
 			}
 
 			if (cl.hasOption("language")) {

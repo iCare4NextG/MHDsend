@@ -187,18 +187,15 @@ public class FhirSend {
 		//Date
 		reference.setDate(new Date());
 
-		//Description (Optional)
-		String description = (String) options.get("document_title");
-		if (!description.isEmpty()) {
-			reference.setDescription((String) options.get("document_title"));
-			logger.info("Document description : {}", reference.getDescription());
-		}
+		//title (Optional)
+		String documentTitle = ((String) options.get("document_title"));
+		logger.info("Document title : {}", reference.getDescription());
 
 		//content (Required / Optional)
 		List<DocumentReference.DocumentReferenceContentComponent> drContentList = new ArrayList<>();
 		Attachment attachment = new Attachment();
 		String language = (String) options.get("language");
-		attachment.setContentType((String) options.get("content_type")).setUrl(binaryUUid).setSize(0);
+		attachment.setContentType((String) options.get("content_type")).setUrl(binaryUUid).setSize(0).setTitle(documentTitle);
 		if (language != null) {
 			attachment.setLanguage(language);
 		}
