@@ -1,7 +1,6 @@
 target/
 .project
 .classpath
-bin/
 *.iml
 .settings/
 *.class
@@ -9,7 +8,6 @@ bin/
 *.war
 *.DS_Store
 .settings
-bin
 examples
 target
 tmp
