@@ -427,6 +427,7 @@ public class MHDsend {
 	}
 
 	private static String getDocumentTitle(String data) {
+		// TODO: Are you sure the following code works well?
 		String[] title = data.split("\\/");
 		if (title.length == 1) {
 			return data;
