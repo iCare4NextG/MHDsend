@@ -9,7 +9,7 @@ DIRNAME="`dirname "$0"`"
 
 # Setup $MHDSEND_HOME
 if [ "x$MHDSEND_HOME" = "x" ]; then
-    $MHDSEND_HOME=`cd "$DIRNAME"/..; pwd`
+    MHDSEND_HOME=`cd "$DIRNAME"/..; pwd`
 fi
 
 # Setup the JVM

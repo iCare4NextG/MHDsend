@@ -11,6 +11,11 @@
         <fileSet>
             <directory>${project.basedir}</directory>
             <outputDirectory>.</outputDirectory>
+            <includes>
+                <include>README*</include>
+                <include>LICENSE*</include>
+                <include>NOTICE*</include>
+            </includes>
         </fileSet>
         <fileSet>
             <directory>src</directory>

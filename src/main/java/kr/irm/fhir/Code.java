@@ -12,34 +12,41 @@ public class Code {
 		this.codeSystem = codeSystem;
 	}
 
-	public Code(String codeValue, String codeSystem){
+	public Code(String codeValue, String codeSystem) {
 		this.codeValue = codeValue;
 		this.codeSystem = codeSystem;
 	}
-	public Code(String codeSystem){
+
+	public Code(String codeSystem) {
 		this.codeSystem = codeSystem;
 	}
-	public Code(){}
 
-	public String getCodeValue(){
+	public Code() {
+	}
+
+	public String getCodeValue() {
 		return codeValue;
 	}
-	public void setCodeValue(String codeValue){
+
+	public void setCodeValue(String codeValue) {
 		this.codeSystem = codeValue;
 	}
-	public String getDisplayName(){
+
+	public String getDisplayName() {
 		return displayName;
 	}
-	public void setDisplayName(String displayName){
+
+	public void setDisplayName(String displayName) {
 		this.displayName = displayName;
 	}
-	public String getCodeSystem(){
-		return codeValue;
-	}
-	public void setCodeSystem(String codeSystem){
-		this.codeSystem = codeValue;
+
+	public String getCodeSystem() {
+		return codeSystem;
 	}
 
+	public void setCodeSystem(String codeSystem) {
+		this.codeSystem = codeValue;
+	}
 
 	public static Code splitCode(String tmpCode) {
 		String[] tmp = tmpCode.split("\\^");
@@ -55,9 +62,9 @@ public class Code {
 	@Override
 	public String toString() {
 		return "Code{" +
-			"codeValue='" + codeValue + '\'' +
-			", displayName='" + displayName + '\'' +
-			", codeSystem='" + codeSystem + '\'' +
-			'}';
+			"codeSystem = " + codeSystem +
+			", codeValue = " + codeValue +
+			", displayName = " + displayName +
+			"}";
 	}
 }
