@@ -14,4 +14,4 @@ tmp
 test/
 .sts4-cache
 res/
-
+.idea/
