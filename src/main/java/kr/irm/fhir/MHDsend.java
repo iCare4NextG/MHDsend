@@ -1,7 +1,6 @@
 package kr.irm.fhir;
 
 import org.apache.commons.cli.*;
-import org.hl7.fhir.exceptions.FHIRException;
 import org.hl7.fhir.r4.model.Enumerations;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Reference;
@@ -44,7 +43,6 @@ public class MHDsend extends UtilContext{
 		String manifest_title;
 		String document_title;
 		String source;
-		String verbose;
 		List<Reference> reference_id_list;
 		Enumerations.DocumentReferenceStatus manifest_status = Enumerations.DocumentReferenceStatus.CURRENT;
 		Enumerations.DocumentReferenceStatus document_status = Enumerations.DocumentReferenceStatus.CURRENT;
@@ -81,16 +79,16 @@ public class MHDsend extends UtilContext{
 		opts.addOption(null, OPTION_DOCUMENT_STATUS, true, "DocumentReference.status (default: current)");
 		opts.addOption(null, OPTION_DOCUMENT_TITLE, true, "DocumentReference.content.attachment.title");
 		opts.addOption("f", OPTION_FACILITY, true, "DocumentReference.context.facilityType (code^display^system) ");
-		opts.addOption("p", OPTION_FACILITY, true, "DocumentReference.context.practiceSetting (code^display^system) ");
+		opts.addOption("p", OPTION_PRACTICE, true, "DocumentReference.context.practiceSetting (code^display^system) ");
 		opts.addOption("e", OPTION_EVENT, true, "DocumentReference.context.event - multiple (code^display^system)");
 		opts.addOption("l", OPTION_SECURITY_LABEL, true, "DocumentReference.securityLabel - multiple (code^display^system)");
 		opts.addOption("r", OPTION_REFERENCE_ID, true, "DocumentReference.context.related - multiple (idValue^^^&assignerId&ISO^idType)");
-		opts.addOption("v", OPTION_VERBOSE, true, "View Bundle log");
+		opts.addOption("v", OPTION_VERBOSE, false, "Show transaction logs");
 
 		CommandLineParser parser = new DefaultParser();
 		try {
 			CommandLine cl = parser.parse(opts, args);
-			Map<String, Object> optMap = new HashMap<>();
+			Map<String, Object> optionMap = new HashMap<String, Object>();
 
 			// HELP
 			if (cl.hasOption("h") || args.length == 0) {
@@ -105,15 +103,15 @@ public class MHDsend extends UtilContext{
 			// timeout
 			if (cl.hasOption(OPTION_TIMEOUT)) {
 				timeout = cl.getOptionValue(OPTION_TIMEOUT);
-				optMap.put("timeout", timeout);
+				optionMap.put("timeout", timeout);
 			} else {
-				optMap.put("timeout", timeout);
+				optionMap.put("timeout", timeout);
 			}
 
 			// Server-url
 			if (cl.hasOption(OPTION_SERVER_URL)) {
 				server_url = cl.getOptionValue(OPTION_SERVER_URL);
-				optMap.put(OPTION_SERVER_URL, server_url);
+				optionMap.put(OPTION_SERVER_URL, server_url);
 			} else {
 				error = true;
 				LOG.info("server_url Error = {}", cl.hasOption(OPTION_SERVER_URL));
@@ -122,7 +120,7 @@ public class MHDsend extends UtilContext{
 			// OAuth token
 			if (cl.hasOption(OPTION_OAUTH_TOKEN)) {
 				oauth_token = cl.getOptionValue(OPTION_OAUTH_TOKEN);
-				optMap.put(OPTION_OAUTH_TOKEN, oauth_token);
+				optionMap.put(OPTION_OAUTH_TOKEN, oauth_token);
 			} else {
 				error = true;
 				LOG.info("oauth_token Error = {}", cl.hasOption(OPTION_OAUTH_TOKEN));
@@ -130,10 +128,9 @@ public class MHDsend extends UtilContext{
 
 			// Verbose (Optional)
 			if (cl.hasOption(OPTION_VERBOSE)) {
-				verbose = cl.getOptionValue(OPTION_VERBOSE);
-				optMap.put(OPTION_VERBOSE, verbose);
+				optionMap.put(OPTION_VERBOSE, Boolean.TRUE);
 			} else {
-				optMap.put(OPTION_VERBOSE, null);
+				optionMap.put(OPTION_VERBOSE, Boolean.FALSE);
 			}
 
 			// manifest-uuid
@@ -148,11 +145,11 @@ public class MHDsend extends UtilContext{
 					} else {
 						manifest_uuid = tmpUUID;
 					}
-				optMap.put(OPTION_MANIFEST_UUID, manifest_uuid);
+				optionMap.put(OPTION_MANIFEST_UUID, manifest_uuid);
 				}
 			} else {
 				manifest_uuid = newUUID();
-				optMap.put(OPTION_MANIFEST_UUID, manifest_uuid);
+				optionMap.put(OPTION_MANIFEST_UUID, manifest_uuid);
 			}
 
 			// document-uuid
@@ -167,11 +164,11 @@ public class MHDsend extends UtilContext{
 					} else {
 						document_uuid = tmpUUID;
 					}
-				optMap.put(OPTION_DOCUMENT_UUID, document_uuid);
+				optionMap.put(OPTION_DOCUMENT_UUID, document_uuid);
 				}
 			} else {
 				document_uuid = newUUID();
-				optMap.put(OPTION_DOCUMENT_UUID, document_uuid);
+				optionMap.put(OPTION_DOCUMENT_UUID, document_uuid);
 			}
 
 			// binary-uuid
@@ -186,11 +183,11 @@ public class MHDsend extends UtilContext{
 					} else {
 						binary_uuid = tmpUUID;
 					}
-				optMap.put(OPTION_BINARY_UUID, binary_uuid);
+				optionMap.put(OPTION_BINARY_UUID, binary_uuid);
 				}
 			} else {
 				binary_uuid = newUUID();
-				optMap.put(OPTION_BINARY_UUID, binary_uuid);
+				optionMap.put(OPTION_BINARY_UUID, binary_uuid);
 			}
 
 			// manifest-uid
@@ -205,11 +202,11 @@ public class MHDsend extends UtilContext{
 					} else {
 						manifest_uid = OID_Prefix + tmpOID;
 					}
-				optMap.put(OPTION_MANIFEST_UID, manifest_uid);
+				optionMap.put(OPTION_MANIFEST_UID, manifest_uid);
 				}
 			} else {
 				manifest_uid = newOID();
-				optMap.put(OPTION_MANIFEST_UID, manifest_uid);
+				optionMap.put(OPTION_MANIFEST_UID, manifest_uid);
 			}
 
 			// document-uid
@@ -225,11 +222,11 @@ public class MHDsend extends UtilContext{
 					} else {
 						document_uid = OID_Prefix + tmpOID;
 					}
-				optMap.put(OPTION_DOCUMENT_UID, document_uid);
+				optionMap.put(OPTION_DOCUMENT_UID, document_uid);
 				}
 			} else {
 				document_uid = newOID();
-				optMap.put(OPTION_DOCUMENT_UID, document_uid);
+				optionMap.put(OPTION_DOCUMENT_UID, document_uid);
 				LOG.info("document_uid = {}", document_uid);
 			}
 
@@ -242,7 +239,7 @@ public class MHDsend extends UtilContext{
 				} else {
 					code = Code.splitCode(cl.getOptionValue(OPTION_CATEGORY));
 					category = code;
-					optMap.put(OPTION_CATEGORY, category);
+					optionMap.put(OPTION_CATEGORY, category);
 				}
 			} else {
 				error = true;
@@ -257,7 +254,7 @@ public class MHDsend extends UtilContext{
 				} else {
 					code = Code.splitCode(cl.getOptionValue(OPTION_TYPE));
 					type = code;
-					optMap.put(OPTION_TYPE, type);
+					optionMap.put(OPTION_TYPE, type);
 				}
 			} else {
 				error = true;
@@ -272,12 +269,12 @@ public class MHDsend extends UtilContext{
 				} else {
 					code = Code.splitCode(cl.getOptionValue(OPTION_FACILITY));
 					facility = code;
-					optMap.put(OPTION_FACILITY, facility);
+					optionMap.put(OPTION_FACILITY, facility);
 				}
 			} else {
 				code = new Code(null, null, null);
 				facility = code;
-				optMap.put(OPTION_FACILITY, facility);
+				optionMap.put(OPTION_FACILITY, facility);
 			}
 
 			// practice
@@ -288,12 +285,12 @@ public class MHDsend extends UtilContext{
 				} else {
 					code = Code.splitCode(cl.getOptionValue(OPTION_PRACTICE));
 					practice = code;
-					optMap.put(OPTION_PRACTICE, practice);
+					optionMap.put(OPTION_PRACTICE, practice);
 				}
 			} else {
 				code = new Code(null, null, null);
 				practice = code;
-				optMap.put(OPTION_PRACTICE, practice);
+				optionMap.put(OPTION_PRACTICE, practice);
 			}
 
 			// event
@@ -308,13 +305,13 @@ public class MHDsend extends UtilContext{
 					} else {
 						code = Code.splitCode(tmpEvent);
 						event.add(code);
-						optMap.put(OPTION_EVENT, event);
+						optionMap.put(OPTION_EVENT, event);
 					}
 				}
 			} else {
 				code = new Code(null, null, null);
 				event.add(code);
-				optMap.put(OPTION_EVENT, event);
+				optionMap.put(OPTION_EVENT, event);
 			}
 
 			// security-label
@@ -329,13 +326,13 @@ public class MHDsend extends UtilContext{
 					} else {
 						code = Code.splitCode(tmpLabel);
 						security_label.add(code);
-						optMap.put(OPTION_SECURITY_LABEL, security_label);
+						optionMap.put(OPTION_SECURITY_LABEL, security_label);
 					}
 				}
 			} else {
 				code = new Code(null, null, null);
 				security_label.add(code);
-				optMap.put(OPTION_SECURITY_LABEL, security_label);
+				optionMap.put(OPTION_SECURITY_LABEL, security_label);
 			}
 
 			// manifest-type
@@ -346,7 +343,7 @@ public class MHDsend extends UtilContext{
 				} else {
 					code = Code.splitCode(cl.getOptionValue(OPTION_MANIFEST_TYPE));
 					manifest_type = code;
-					optMap.put(OPTION_MANIFEST_TYPE, manifest_type);
+					optionMap.put(OPTION_MANIFEST_TYPE, manifest_type);
 				}
 			} else {
 				error = true;
@@ -356,7 +353,7 @@ public class MHDsend extends UtilContext{
 			// content-type
 			if (cl.hasOption(OPTION_CONTENT_TYPE)) {
 				content_type = cl.getOptionValue(OPTION_CONTENT_TYPE);
-				optMap.put(OPTION_CONTENT_TYPE, content_type);
+				optionMap.put(OPTION_CONTENT_TYPE, content_type);
 			} else {
 				error = true;
 				LOG.error("content_type Error : {}", cl.getOptionValue(OPTION_CONTENT_TYPE));
@@ -366,7 +363,7 @@ public class MHDsend extends UtilContext{
 			if (cl.hasOption(OPTION_PATIENT_ID)) {
 				LOG.info("patient-id = {}", cl.getOptionValue(OPTION_PATIENT_ID));
 				patient_id = cl.getOptionValue(OPTION_PATIENT_ID);
-				optMap.put(OPTION_PATIENT_ID, patient_id);
+				optionMap.put(OPTION_PATIENT_ID, patient_id);
 			} else {
 				error = true;
 				LOG.error("patient_id Error : {}", cl.getOptionValue(OPTION_PATIENT_ID));
@@ -375,7 +372,7 @@ public class MHDsend extends UtilContext{
 			// data-binary
 			if (cl.hasOption(OPTION_DATA_BINARY)) {
 				data_binary = cl.getOptionValue(OPTION_DATA_BINARY);
-				optMap.put(OPTION_DATA_BINARY, data_binary);
+				optionMap.put(OPTION_DATA_BINARY, data_binary);
 			} else {
 				error = true;
 				LOG.error("data_binary Error : {}", cl.getOptionValue(OPTION_DATA_BINARY));
@@ -384,7 +381,7 @@ public class MHDsend extends UtilContext{
 			// manifest-title
 			if (cl.hasOption(OPTION_MANIFEST_TITLE)) {
 				manifest_title = cl.getOptionValue(OPTION_MANIFEST_TITLE);
-				optMap.put(OPTION_MANIFEST_TITLE, manifest_title);
+				optionMap.put(OPTION_MANIFEST_TITLE, manifest_title);
 			} else {
 				error = true;
 				LOG.error("manifest_title Error : {}", cl.getOptionValue(OPTION_MANIFEST_TITLE));
@@ -393,7 +390,7 @@ public class MHDsend extends UtilContext{
 			// document-title
 			if (cl.hasOption(OPTION_DOCUMENT_TITLE)) {
 				document_title = cl.getOptionValue(OPTION_DOCUMENT_TITLE);
-				optMap.put(OPTION_DOCUMENT_TITLE, document_title);
+				optionMap.put(OPTION_DOCUMENT_TITLE, document_title);
 			} else {
 				LOG.info("getOptionValue(data-binary) : {}", cl.getOptionValue(OPTION_DATA_BINARY));
 				document_title = getDocumentTitle(cl.getOptionValue(OPTION_DATA_BINARY));
@@ -401,39 +398,39 @@ public class MHDsend extends UtilContext{
 					LOG.error("document title is null");
 					error = true;
 				}
-				optMap.put(OPTION_DOCUMENT_TITLE, document_title);
+				optionMap.put(OPTION_DOCUMENT_TITLE, document_title);
 			}
 
 			// language
 			if (cl.hasOption(OPTION_LANGUAGE)) {
 				language = cl.getOptionValue(OPTION_LANGUAGE);
-				optMap.put("language", language);
+				optionMap.put("language", language);
 			} else {
-				optMap.put("language", "en");
+				optionMap.put("language", "en");
 			}
 
 			// manifest-status
 			if (cl.hasOption(OPTION_MANIFEST_STATUS)) {
 				String tmpStatus = cl.getOptionValue(OPTION_MANIFEST_STATUS);
 				manifest_status = Enumerations.DocumentReferenceStatus.fromCode(tmpStatus);
-				optMap.put(OPTION_MANIFEST_STATUS, manifest_status);
+				optionMap.put(OPTION_MANIFEST_STATUS, manifest_status);
 			} else {
-				optMap.put(OPTION_MANIFEST_STATUS, manifest_status);
+				optionMap.put(OPTION_MANIFEST_STATUS, manifest_status);
 			}
 
 			// document-status
 			if (cl.hasOption(OPTION_DOCUMENT_STATUS)) {
 				String tmpStatus = cl.getOptionValue(OPTION_DOCUMENT_STATUS);
 				document_status = Enumerations.DocumentReferenceStatus.fromCode(tmpStatus);
-				optMap.put(OPTION_DOCUMENT_STATUS, document_status);
+				optionMap.put(OPTION_DOCUMENT_STATUS, document_status);
 			} else {
-				optMap.put(OPTION_DOCUMENT_STATUS, document_status);
+				optionMap.put(OPTION_DOCUMENT_STATUS, document_status);
 			}
 
 			// source
 			source = newOID();
 			// TODO: Are you sure to always generate new OID for source?
-			optMap.put(OPTION_SOURCE, source);
+			optionMap.put(OPTION_SOURCE, source);
 
 			// related
 			reference_id_list = new ArrayList<>();
@@ -447,20 +444,19 @@ public class MHDsend extends UtilContext{
 					} else {
 						reference = createReferenceId(referenceId);
 						reference_id_list.add(reference);
-						optMap.put(OPTION_REFERENCE_ID, reference_id_list);
+						optionMap.put(OPTION_REFERENCE_ID, reference_id_list);
 					}
 				}
 			} else {
-				optMap.put(OPTION_REFERENCE_ID, null);
+				optionMap.put(OPTION_REFERENCE_ID, null);
 			}
 
 			if (error) {
 				System.exit(1);
 			}
 
-			FhirSend fhirSend = FhirSend.getInstance();
-//			logger.info("optMap : {}", optMap.toString());
-			fhirSend.sendFhir(optMap);
+			FhirSend fhirSend = new FhirSend();
+			fhirSend.sendFhir(optionMap);
 
 		} catch (ParseException e) {
 			e.printStackTrace();
@@ -484,14 +480,13 @@ public class MHDsend extends UtilContext{
 		String[] referenceArr = referenceId.split("\\^");
 		Reference reference = new Reference();
 		Identifier identifier = new Identifier();
-		FhirSend fhirSend = FhirSend.getInstance();
 		String identifierValue = referenceArr[0];
 		String identifierSystem = referenceArr[3];
 		String identifierType = referenceArr[4];
 		// Set Identifier
 		identifier.setValue(identifierValue);
 		Code code = new Code(identifierType, IDENTIFIER_SYSTEM);
-		identifier.setType(fhirSend.createCodeableConcept(code));
+		identifier.setType(FhirSend.createCodeableConcept(code));
 		identifier.setSystem(getIdentifierSystemValue(identifierSystem));
 		reference.setIdentifier(identifier);
 		return reference;

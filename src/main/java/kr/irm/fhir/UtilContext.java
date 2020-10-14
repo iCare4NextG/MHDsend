@@ -1,6 +1,7 @@
 package kr.irm.fhir;
 
 public class UtilContext {
+
 	static final String PROFILE_ITI_65_COMPREHENSIVE_METADATA =
 		"http://ihe.net/fhir/StructureDefinition/IHE_MHD_Provide_Comprehensive_DocumentBundle";
 	static final String PROFILE_ITI_65_MINIMAL_METADATA =
