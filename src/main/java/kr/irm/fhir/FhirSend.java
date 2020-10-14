@@ -3,20 +3,19 @@ package kr.irm.fhir;
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.client.interceptor.BearerTokenAuthInterceptor;
-import org.apache.commons.io.output.ClosedOutputStream;
 import org.hl7.fhir.r4.model.*;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.*;
+import java.net.URLEncoder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
-public class FhirSend {
+public class FhirSend extends UtilContext{
 	private static final Logger LOG = LoggerFactory.getLogger(FhirSend.class);
 
 	private static FhirSend uniqueInstance = new FhirSend();
@@ -30,18 +29,17 @@ public class FhirSend {
 		return uniqueInstance;
 	}
 
-	private static final String PROFILE_ITI_65_COMPREHENSIVE_METADATA =
-		"http://ihe.net/fhir/StructureDefinition/IHE_MHD_Provide_Comprehensive_DocumentBundle";
-	private static final String PROFILE_ITI_65_MINIMAL_METADATA =
-		"http://ihe.net/fhir/StructureDefinition/IHE_MHD_Provide_Minimal_DocumentBundle";
 	private static final FhirContext fhirContext = FhirContext.forR4();
 	private static IGenericClient client = null;
+	private static String DOCUMENT_REFERENCE = "DocumentReference";
+	private static String DOCUMENT_MANIFEST = "DocumentManifest";
+	private static String BINARY = "Binary";
 
 	void sendFhir(Map<String, Object> options) {
 		// Setting (Header)
-		String serverURL = (String) options.get("server_url"); //change = http or https check
-		String oauthToken = (String) options.get("oauth_token"); //check방법
-		int timeout = Integer.parseInt((String) options.get("timeout"));
+		String serverURL = (String) options.get(OPTION_SERVER_URL); //change = http or https check
+		String oauthToken = (String) options.get(OPTION_OAUTH_TOKEN); //check 방법
+		int timeout = Integer.parseInt((String) options.get(OPTION_TIMEOUT));
 		LOG.info("URL={}", serverURL);
 		client = fhirContext.newRestfulGenericClient(serverURL);
 		fhirContext.getRestfulClientFactory().setSocketTimeout(timeout * 1000);
@@ -59,16 +57,16 @@ public class FhirSend {
 		LOG.info("Setting Bundle={}", bundle.toString());
 
 		// Upload binary, reference, manifest
-		Binary binary = provideBinary(options);
+		Binary binary = createBinary(options);
 		addBinaryBundle(binary, bundle);
 
 		String patientResourceId = null;
-		if (getPatientResourceId((String) options.get("patient_id"), serverURL) == null) {
-			LOG.error("getPatientResourceId() error" );
+		if (getPatientResourceId((String) options.get(OPTION_PATIENT_ID), serverURL) == null) {
+			LOG.error("getPatientResourceId() error");
 			System.exit(5);
 			return;
 		} else {
-			patientResourceId = getPatientResourceId((String) options.get("patient_id"), serverURL);
+			patientResourceId = getPatientResourceId((String) options.get(OPTION_PATIENT_ID), serverURL);
 			LOG.info("patient_id={}", patientResourceId);
 		}
 
@@ -81,19 +79,44 @@ public class FhirSend {
 		addManifestBundle(documentManifest, bundle);
 
 		// Upload request
-		// TODO: print request bundle if -v or --verbose option is provided.
-//		logger.info(ctx.newJsonParser().setPrettyPrint(true).encodeResourceToString(bundle));
-
+		boolean[] verbose = new boolean[2];
+		if (options.get(OPTION_VERBOSE) != null) {
+			verbose = getVerbose((String) options.get(OPTION_VERBOSE));
+		}
+		if (verbose[0]) {
+			LOG.info("request bundle log={}", fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(bundle));
+		}
 		// Upload response
 		Bundle responseBundle = client.transaction().withBundle(bundle).execute();
-		// TODO: print response bundle if -v or --verbose option is provided.
-//		System.out.println(ctx.newJsonParser().setPrettyPrint(true).encodeResourceToString(responseBundle));
+		if (verbose[1]) {
+			LOG.info("response bundle log={}", fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(responseBundle));
+		}
+	}
+
+	private boolean[] getVerbose(String verbose) {
+		boolean[] checkVerbose = new boolean[2];
+		String[] verboseArr = verbose.split("\\^");
+		if (verboseArr.length == 1) {
+			if (verboseArr[0].equals("request")){
+				checkVerbose[0] = true;
+			} else if (verboseArr[0].equals("response")){
+				checkVerbose[1] = true;
+			}
+		} else if (verboseArr.length == 2){
+			if (verboseArr[0].equals("request")){
+				checkVerbose[0] = true;
+			} else if (verboseArr[1].equals("response")){
+				checkVerbose[1] = true;
+			}
+		}
+		return checkVerbose;
 	}
 
 	private String getPatientResourceId(String patient_id, String server_url) {
 		//ServerUrl
-		String patientUrl = server_url + "/Patient?identifier=" + patient_id;//"5c3f536e-fed9-4251-8b1a-e5d18fce6fc1";
-		// TODO: Do not use simple "+" operator here. Use a library function for URL encoding. 
+		patient_id = urlEncoding(patient_id);
+		String patientUrl = server_url + "/Patient?identifier=" + patient_id;
+
 		Bundle patientBundle = client.search()
 			.byUrl(patientUrl)
 			.returnBundle(Bundle.class)
@@ -108,76 +131,78 @@ public class FhirSend {
 		}
 	}
 
+	private String urlEncoding(String patient_id) {
+		String url = null;
+		try {
+			url = URLEncoder.encode(patient_id, "UTF-8");
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}
+		return url;
+	}
+
 	private void addBinaryBundle(Binary binary, Bundle bundle) {
 		Bundle.BundleEntryComponent entry = bundle.addEntry();
 		entry.setFullUrl(binary.getIdElement().getValue());
 		entry.setResource(binary);
-		entry
-			.getRequest().setUrl("Binary")
-			.setMethod(Bundle.HTTPVerb.POST);
+		entry.getRequest().setUrl(BINARY).setMethod(Bundle.HTTPVerb.POST);
 	}
 
 	private void addReferenceBundle(DocumentReference reference, Bundle bundle) {
 		Bundle.BundleEntryComponent entry = bundle.addEntry();
 		entry.setFullUrl(reference.getIdElement().getValue());
 		entry.setResource(reference);
-		entry
-			.getRequest().setUrl("DocumentReference")
-			.setMethod(Bundle.HTTPVerb.POST);
+		entry.getRequest().setUrl(DOCUMENT_REFERENCE).setMethod(Bundle.HTTPVerb.POST);
 	}
 
 	private void addManifestBundle(DocumentManifest manifest, Bundle bundle) {
 		Bundle.BundleEntryComponent entry = bundle.addEntry();
 		entry.setFullUrl(manifest.getIdElement().getValue());
 		entry.setResource(manifest);
-		entry
-			.getRequest().setUrl("DocumentManifest")
-			.setMethod(Bundle.HTTPVerb.POST);
+		entry.getRequest().setUrl(DOCUMENT_MANIFEST).setMethod(Bundle.HTTPVerb.POST);
 	}
 
-	// TODO: change this method name. DO NOT USE provideXXX here. I told you why already.
-	private Binary provideBinary(Map<String, Object> options) {
+	private Binary createBinary(Map<String, Object> options) {
 		Binary binary = new Binary();
-		binary.setId((String) options.get("binary_uuid"));
-		binary.setContentType((String) options.get("content_type"));
+		binary.setId((String) options.get(OPTION_BINARY_UUID));
+		binary.setContentType((String) options.get(OPTION_CONTENT_TYPE));
 		LOG.info("Binary id, content_type={}, {}", binary.getId(), binary.getContentType());
 
-		byte[] byteData = writeToByte((String) options.get("data_binary"));
+		byte[] byteData = writeToByte((String) options.get(OPTION_DATA_BINARY));
 		binary.setData(byteData);
-		// TODO: Are you sure to show all binary contents?
-		LOG.info("Binary data={}", binary.getData());
-		return (binary);
+		LOG.info("Binary data={}", new String(binary.getData()));
+
+		return binary;
 	}
 
 	private DocumentReference createDocumentReference(String patientResourceId, String binaryUUid, Map<String, Object> options) {
 		LOG.info("Binary.id={}", binaryUUid);
 		DocumentReference documentReference = new DocumentReference();
 
-		// DocumentReference uuid
-		documentReference.setId((String) options.get("document_uuid"));
+		// documentReference uuid
+		documentReference.setId((String) options.get(OPTION_DOCUMENT_UUID));
 		LOG.info("DocumentReference.id={}", documentReference.getId());
 
-		// MasterIdentifier (Required)
+		// masterIdentifier (Required)
 		Identifier identifier = new Identifier();
 		identifier
-			.setSystem("urn:ietf:rfc:3986")
-			.setValue((String) options.get("document_uid"));
+			.setSystem(IDENTIFIER_SYSTEM)
+			.setValue((String) options.get(OPTION_DOCUMENT_UID));
 		documentReference.setMasterIdentifier(identifier);
 		LOG.info("DocumentReference.masterIdentifier System, Uid= {}, {}", documentReference.getMasterIdentifier().getSystem(), documentReference.getMasterIdentifier().getValue());
 
-		// Identifier (Required)
-		documentReference.addIdentifier()
-			.setUse(Identifier.IdentifierUse.OFFICIAL)
-			.setSystem("urn:ietf:rfc:3986")
-			.setValue((String) options.get("document_uuid"));
+		// identifier (Required)
+		documentReference.addIdentifier().setUse(Identifier.IdentifierUse.OFFICIAL)
+			.setSystem(IDENTIFIER_SYSTEM)
+			.setValue((String) options.get(OPTION_DOCUMENT_UUID));
 		LOG.info("DocumentReference.identifier System, Uuid={}, {}", documentReference.getIdentifier().get(0).getSystem(), documentReference.getIdentifier().get(0).getValue());
 
-		//status
-		documentReference.setStatus((Enumerations.DocumentReferenceStatus) options.get("document_status"));
+		// status
+		documentReference.setStatus((Enumerations.DocumentReferenceStatus) options.get(OPTION_DOCUMENT_STATUS));
 		LOG.info("DocumentReference.status={}", documentReference.getStatus());
 
-		//type (Required)
-		Code type = (Code) options.get("type");
+		// type (Required)
+		Code type = (Code) options.get(OPTION_TYPE);
 		CodeableConcept codeableConcept;
 		codeableConcept = createCodeableConcept(type);
 		documentReference.setType(codeableConcept);
@@ -186,8 +211,8 @@ public class FhirSend {
 			documentReference.getType().getCoding().get(0).getCode(),
 			documentReference.getType().getCoding().get(0).getDisplay());
 
-		//category (Required)
-		Code category = (Code) options.get("category");
+		// category (Required)
+		Code category = (Code) options.get(OPTION_CATEGORY);
 		codeableConcept = createCodeableConcept(category);
 		List<CodeableConcept> codeableConceptList = new ArrayList<>();
 		codeableConceptList.add(codeableConcept);
@@ -197,22 +222,22 @@ public class FhirSend {
 			documentReference.getCategory().get(0).getCoding().get(0).getCode(),
 			documentReference.getCategory().get(0).getCoding().get(0).getDisplay());
 
-		//subject (Required)
+		// subject (Required)
 		Reference subjectRefer = new Reference();
 		subjectRefer.setReference("Patient/" + patientResourceId);
 		documentReference.setSubject(subjectRefer);
 		LOG.info("DocumentReference.subject={}", documentReference.getSubject().getReference());
 
-		//Date
+		// date
 		documentReference.setDate(new Date());
 		LOG.info("DocumentReference.date={}", documentReference.getDate().toString());
 
-		//content (Required / Optional)
-		String documentTitle = ((String) options.get("document_title"));
+		// content (Required / Optional)
+		String documentTitle = ((String) options.get(OPTION_DOCUMENT_TITLE));
 		List<DocumentReference.DocumentReferenceContentComponent> documentReferenceContentList = new ArrayList<>();
 		Attachment attachment = new Attachment();
-		String language = (String) options.get("language");
-		attachment.setContentType((String) options.get("content_type")).setUrl(binaryUUid).setSize(0).setTitle(documentTitle);
+		String language = (String) options.get(OPTION_LANGUAGE);
+		attachment.setContentType((String) options.get(OPTION_CONTENT_TYPE)).setUrl(binaryUUid).setSize(0).setTitle(documentTitle);
 		if (language != null) {
 			attachment.setLanguage(language);
 		}
@@ -223,36 +248,33 @@ public class FhirSend {
 		LOG.info("DocumentReference.attachment.title={}", documentReference.getContent().get(0).getAttachment().getTitle());
 		LOG.info("DocumentReference.attachment.language={}", documentReference.getContent().get(0).getAttachment().getTitle());
 
-		//context (Optional)
+		// context (Optional)
 		DocumentReference.DocumentReferenceContextComponent documentReferenceContext = new DocumentReference.DocumentReferenceContextComponent();
 
-		Code facility = (Code) options.get("facility");
+		Code facility = (Code) options.get(OPTION_FACILITY);
 		if (facility.codeSystem != null) {
 			codeableConcept = createCodeableConcept(facility);
 			documentReferenceContext.setFacilityType(codeableConcept);
 		}
-		Code practice = (Code) options.get("practice");
+		Code practice = (Code) options.get(OPTION_PRACTICE);
 		if (practice.codeSystem != null) {
 			codeableConcept = createCodeableConcept(practice);
 			documentReferenceContext.setPracticeSetting(codeableConcept);
 		}
-		List<Code> eventList = (List<Code>) options.get("event");
+		List<Code> eventList = (List<Code>) options.get(OPTION_EVENT);
 		codeableConceptList = new ArrayList<>();
 		for(Code event : eventList) {
 			if (event.codeSystem != null) {
 				codeableConcept = createCodeableConcept(event);
 				codeableConceptList.add(codeableConcept);
-				documentReferenceContext.setEvent(codeableConceptList);
 			}
 		}
+		documentReferenceContext.setEvent(codeableConceptList);
 
-		// TODO: how about securityLabel? It looks missing.
-
-		// TODO: remove unused code below.
-//		List<String> related = (List<String>) options.get("reference_id");
 		List<Reference> relatedList;
-		if (options.get("reference_id") != null){
-			relatedList = (List<Reference>) options.get("reference_id");
+		if (options.get(OPTION_REFERENCE_ID) != null){
+			//noinspection unchecked
+			relatedList = (List<Reference>) options.get(OPTION_REFERENCE_ID);
 			if(!relatedList.isEmpty()){
 				documentReferenceContext.setRelated(relatedList);
 			}
@@ -287,36 +309,53 @@ public class FhirSend {
 				}
 			}
 		}
+		// security label
+		List<Code> securityLabelList = (List<Code>) options.get(OPTION_SECURITY_LABEL);
+		codeableConceptList = new ArrayList<>();
+		for(Code label : securityLabelList) {
+			if (label.codeSystem != null) {
+				codeableConcept = createCodeableConcept(label);
+				codeableConceptList.add(codeableConcept);
+			}
+		}
+		documentReference.setSecurityLabel(codeableConceptList);
+		if(!documentReference.getSecurityLabel().isEmpty()){
+			codeableConceptList = documentReference.getSecurityLabel();
+			for (CodeableConcept securityLabel : codeableConceptList) {
+				LOG.info("DocumentReference.securityLabel={},{},{}",
+					securityLabel.getCoding().get(0).getSystem(), securityLabel.getCoding().get(0).getCode(), securityLabel.getCoding().get(0).getDisplay());
+			}
+		}
 		return (documentReference);
 	}
 
 	private DocumentManifest createDocumentManifest(String patientResourceId, String referenceUUid, Map<String, Object> options) {
 		DocumentManifest manifest = new DocumentManifest();
 		//Document Manifest uuid
-		manifest.setId((String) options.get("manifest_uuid"));
+		manifest.setId((String) options.get(OPTION_MANIFEST_UUID));
 		LOG.info("DocumentManifest.id={}", manifest.getId());
 
 		// MasterIdentifier (Required)
 		Identifier identifier = new Identifier();
 		identifier
-			.setSystem("urn:ietf:rfc:3986")
-			.setValue((String) options.get("manifest_uid"));
+			.setSystem(IDENTIFIER_SYSTEM)
+			.setValue((String) options.get(OPTION_MANIFEST_UID));
 		manifest.setMasterIdentifier(identifier);
 		LOG.info("DocumentManifest.masterIdentifier System, Uid={}, {}", manifest.getMasterIdentifier().getSystem(), manifest.getMasterIdentifier().getValue());
 
 		// Identifier (Required)
 		manifest.addIdentifier()
 			.setUse(Identifier.IdentifierUse.OFFICIAL)
-			.setSystem("urn:ietf:rfc:3986")
-			.setValue((String) options.get("manifest_uuid"));
+			.setSystem(IDENTIFIER_SYSTEM)
+			.setValue((String) options.get(OPTION_MANIFEST_UUID));
 		LOG.info("DocumentManifest.identifier System, Uuid={}, {}", manifest.getIdentifier().get(0).getSystem(), manifest.getIdentifier().get(0).getValue());
 
-		//status
-		manifest.setStatus((Enumerations.DocumentReferenceStatus) options.get("manifest_status"));
+		// status
+		manifest.setStatus((Enumerations.DocumentReferenceStatus) options.get(OPTION_MANIFEST_STATUS));
 		LOG.info("DocumentManifest.status={}", manifest.getStatus());
 
-		//type (Required)
-		Code type = (Code) options.get("manifest_type");
+		// type (Required)
+		Code type = (Code) options.get(OPTION_MANIFEST_TYPE);
 		CodeableConcept codeableConcept;
 		codeableConcept = createCodeableConcept(type);
 		manifest.setType(codeableConcept);
@@ -325,25 +364,25 @@ public class FhirSend {
 			manifest.getType().getCoding().get(0).getCode(),
 			manifest.getType().getCoding().get(0).getDisplay());
 
-		//subject (Required)
+		// subject (Required)
 		Reference subjectRefer = new Reference();
 		subjectRefer.setReference("Patient/" + patientResourceId);
 		manifest.setSubject(subjectRefer);
 		LOG.info("DocumentManifest.subject={}", manifest.getSubject().getReference());
 
-		//created
+		// created
 		manifest.setCreated(new Date());
 		LOG.info("DocumentManifest.created={}", manifest.getCreated().toString());
 
-		//source
-		manifest.setSource((String) options.get("source"));
+		// source
+		manifest.setSource((String) options.get(OPTION_SOURCE));
 		LOG.info("DocumentManifest.source={}", manifest.getSource());
 
-		//description (Required)
-		manifest.setDescription((String) options.get("manifest_title"));
+		// description (Required)
+		manifest.setDescription((String) options.get(OPTION_MANIFEST_TITLE));
 		LOG.info("DocumentManifest.description={}", manifest.getDescription());
 
-		//content
+		// content
 		List<Reference> references = new ArrayList<>();
 		references.add(new Reference(referenceUUid));
 		manifest.setContent(references);
@@ -366,7 +405,7 @@ public class FhirSend {
 	private byte[] writeToByte(String file) {
 		file = file.trim();
 		File f = new File(file);
-		LOG.info("file path : {}",file);
+		LOG.info("file path={}", file);
 		FileInputStream fin = null;
 		FileChannel ch = null;
 		byte[] bytes = new byte[0];
