@@ -1,12 +1,12 @@
-665$ more MHDsend.bat
+
 @echo off
 rem -------------------------------------------------------------------------
 rem MHDsend  Launcher
 rem -------------------------------------------------------------------------
 if not "%ECHO%" == ""  echo %ECHO%
 if "%OS%" == "Windows_NT"  setlocal
-set MAIN_CLASS=org.dcm4che3.tool.storescu.StoreSCU
-set MAIN_JAR=dcm4che-tool-storescu-3.3.3.jar
+set MAIN_CLASS=set MAIN_CLASS=kr.irm.fhir.MHDsend
+set MAIN_JAR=MHDsend-1.0.0.jar
 set DIRNAME=.\
 if "%OS%" == "Windows_NT" set DIRNAME=%~dp0%
 rem Read all command line arguments
@@ -17,24 +17,16 @@ if [%1] == [] goto end
         shift
         goto loop
 :end
-if not "%DCM4CHE_HOME%" == "" goto HAVE_DCM4CHE_HOME
-set DCM4CHE_HOME=%DIRNAME%..
-:HAVE_DCM4CHE_HOME
+if not "%MHDSEND_HOME%" == "" goto HAVE_MHDSEND_HOME
+set MHDSEND_HOME=%DIRNAME%..
+:HAVE_MHDSEND_HOME
 if not "%JAVA_HOME%" == "" goto HAVE_JAVA_HOME
 set JAVA=java
 goto SKIP_SET_JAVA_HOME
 :HAVE_JAVA_HOME
 set JAVA=%JAVA_HOME%\bin\java
 :SKIP_SET_JAVA_HOME
-set CP=%DCM4CHE_HOME%\etc\storescu\
-set CP=%CP%;%DCM4CHE_HOME%\lib\%MAIN_JAR%
-set CP=%CP%;%DCM4CHE_HOME%\lib\dcm4che-core-3.3.3.jar
-set CP=%CP%;%DCM4CHE_HOME%\lib\dcm4che-net-3.3.3.jar
-set CP=%CP%;%DCM4CHE_HOME%\lib\dcm4che-tool-common-3.3.3.jar
-set CP=%CP%;%DCM4CHE_HOME%\lib\slf4j-api-1.7.5.jar
-set CP=%CP%;%DCM4CHE_HOME%\lib\slf4j-log4j12-1.7.5.jar
-set CP=%CP%;%DCM4CHE_HOME%\lib\log4j-1.2.17.jar
-set CP=%CP%;%DCM4CHE_HOME%\lib\commons-cli-1.2.jar
-
+set CP=%MHDSEND_HOME%\etc\MHDsend\
+forfiles /p %MHDSEND_HOME%\lib\ /M *.jar /c "cmd /c set CP=%CP%;@file"
 
 "%JAVA%" %JAVA_OPTS% -cp "%CP%" %MAIN_CLASS% %ARGS%
