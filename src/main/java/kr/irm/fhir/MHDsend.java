@@ -12,9 +12,7 @@ import java.nio.ByteBuffer;
 import java.util.*;
 
 public class MHDsend extends UtilContext{
-
 	private static final Logger LOG = LoggerFactory.getLogger(MHDsend.class);
-
 
 	public static void main(String[] args) {
 		boolean error;
@@ -52,11 +50,13 @@ public class MHDsend extends UtilContext{
 		// Help
 		opts.addOption("h", "help", false, "help");
 
+		// TODO: rearrange option orders: common, documentmanifest, documentreference, binary, ...
+
 		// Header
 		opts.addOption("o", OPTION_OAUTH_TOKEN, true, "OAuth Token");
 		opts.addOption("s", OPTION_SERVER_URL, true, "Server URL");
 		opts.addOption(null, OPTION_TIMEOUT, true, "Timeout in seconds (default: 30)");
-
+		
 		// Required(auto)
 		opts.addOption(null, OPTION_MANIFEST_UUID, true, "DocumentManifest.id (UUID)");
 		opts.addOption(null, OPTION_DOCUMENT_UUID, true, "DocumentReference.id (UUID)");
@@ -372,6 +372,9 @@ public class MHDsend extends UtilContext{
 			// data-binary
 			if (cl.hasOption(OPTION_DATA_BINARY)) {
 				data_binary = cl.getOptionValue(OPTION_DATA_BINARY);
+				// TODO: check if the file exists and readable.
+				// TODO: and insert File object into the optionMap, instead of just string.
+
 				optionMap.put(OPTION_DATA_BINARY, data_binary);
 			} else {
 				error = true;
