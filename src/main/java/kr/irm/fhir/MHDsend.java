@@ -51,7 +51,10 @@ public class MHDsend extends UtilContext{
 
 		error = false;
 		Options opts = new Options();
-
+		// TODO 순서 -> 책에 나온순서대로
+		// TODO  Error 수정
+		//TODO 똑같은건 아래로 내릴것
+		// TODO boolean return형일때 (if))에서 에러가 아닌걸 먼저 쓸것.
 		// Help
 		opts.addOption("h", "help", false, "help");
 

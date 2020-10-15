@@ -75,6 +75,8 @@ public class FhirSend extends UtilContext{
 		if (verbose) {
 			LOG.info("Response=\n{}", fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(responseBundle));
 		}
+		//TODO exit code success or fail
+		LOG.info(String.valueOf(responseBundle.hasEntry()));
 	}
 
 	private String getPatientResourceId(String patient_id, String server_url) {
