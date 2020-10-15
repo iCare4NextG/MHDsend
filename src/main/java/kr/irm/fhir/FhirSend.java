@@ -21,9 +21,7 @@ import java.util.*;
 public class FhirSend extends UtilContext{
 	private static final Logger LOG = LoggerFactory.getLogger(FhirSend.class);
 
-	public FhirSend() {
-
-	}
+	public FhirSend() { }
 
 	private static final FhirContext fhirContext = FhirContext.forR4();
 	private static IGenericClient client = null;
@@ -51,22 +49,23 @@ public class FhirSend extends UtilContext{
 		bundle.setType(Bundle.BundleType.TRANSACTION);
 
 		// Upload binary, reference, manifest
-		// TODO: This order, Binary, DocumentReference, DocumentManifest is good? I don't think so.
-		Binary binary = createBinary(optionMap);
-		addBinaryToBundle(binary, bundle);
-
 		String patientResourceId = getPatientResourceId((String) optionMap.get(OPTION_PATIENT_ID), serverURL);
 		if (patientResourceId  == null) {
+			LOG.error("Patient ID error : No results based on patient ID. Please re-enter the patient ID.");
 			System.exit(5);
 		}
 
+		LOG.info("creating DocumentManifest");
+		DocumentManifest documentManifest = createDocumentManifest(patientResourceId, optionMap);
+		addDocumentManifestToBundle(documentManifest, bundle);
+
 		LOG.info("creating DocumentReference");
-		DocumentReference documentReference = createDocumentReference(patientResourceId, binary.getId(), optionMap);
+		DocumentReference documentReference = createDocumentReference(patientResourceId, optionMap);
 		addDocumentReferenceToBundle(documentReference, bundle);
 
-		LOG.info("creating DocumentManifest");
-		DocumentManifest documentManifest = createDocumentManifest(patientResourceId, documentReference.getId(), optionMap);
-		addDocumentManifestToBundle(documentManifest, bundle);
+		LOG.info("creating Binary");
+		Binary binary = createBinary(optionMap);
+		addBinaryToBundle(binary, bundle);
 
 		boolean verbose = (boolean) optionMap.getOrDefault(OPTION_VERBOSE, Boolean.FALSE);
 		if (verbose) {
@@ -96,9 +95,7 @@ public class FhirSend extends UtilContext{
 				LOG.info("patient found: resource={}", patientResourceId);
 				return patientResourceId;
 			}
-		} catch (URISyntaxException e) {
-			e.printStackTrace();
-		} catch (MalformedURLException e) {
+		} catch (URISyntaxException | MalformedURLException e) {
 			e.printStackTrace();
 		}
 		LOG.error("patient NOT found: id={}", patient_id);
@@ -133,14 +130,13 @@ public class FhirSend extends UtilContext{
 		LOG.info("Binary.id={}", binary.getId());
 		LOG.info("Binary.contentType={}", binary.getContentType());
 
-		byte[] byteData = writeToByte((String) options.get(OPTION_DATA_BINARY));
+		byte[] byteData = getByteData((File)options.get(OPTION_DATA_BINARY));
 		binary.setData(byteData);
 
 		return binary;
 	}
 
-	private DocumentReference createDocumentReference(String patientResourceId, String binaryUUid, Map<String, Object> options) {
-		LOG.info("Binary.id={}", binaryUUid);
+	private DocumentReference createDocumentReference(String patientResourceId, Map<String, Object> options) {
 		DocumentReference documentReference = new DocumentReference();
 
 		// documentReference uuid
@@ -205,7 +201,8 @@ public class FhirSend extends UtilContext{
 		List<DocumentReference.DocumentReferenceContentComponent> documentReferenceContentList = new ArrayList<>();
 		Attachment attachment = new Attachment();
 		String language = (String) options.get(OPTION_LANGUAGE);
-		attachment.setContentType((String) options.get(OPTION_CONTENT_TYPE)).setUrl(binaryUUid).setSize(0).setTitle(documentTitle);
+		String binaryUUID = (String) options.get(OPTION_BINARY_UUID);
+		attachment.setContentType((String) options.get(OPTION_CONTENT_TYPE)).setUrl(binaryUUID).setSize(0).setTitle(documentTitle);
 		if (language != null) {
 			attachment.setLanguage(language);
 		}
@@ -300,7 +297,7 @@ public class FhirSend extends UtilContext{
 		return (documentReference);
 	}
 
-	private DocumentManifest createDocumentManifest(String patientResourceId, String referenceUUid, Map<String, Object> options) {
+	private DocumentManifest createDocumentManifest(String patientResourceId, Map<String, Object> options) {
 		DocumentManifest manifest = new DocumentManifest();
 		//Document Manifest uuid
 		manifest.setId((String) options.get(OPTION_MANIFEST_UUID));
@@ -359,7 +356,7 @@ public class FhirSend extends UtilContext{
 
 		// content
 		List<Reference> references = new ArrayList<>();
-		references.add(new Reference(referenceUUid));
+		references.add(new Reference((String)options.get(OPTION_DOCUMENT_UUID)));
 		manifest.setContent(references);
 		LOG.info("DocumentManifest.content={}", manifest.getContent().get(0).getReference());
 
@@ -376,16 +373,12 @@ public class FhirSend extends UtilContext{
 		return codeableConcept;
 	}
 
-	// TODO: Is the name "writeToByte" appropriate?
-	private byte[] writeToByte(String file) {
-		file = file.trim();
-		File f = new File(file);
-		LOG.info("file path={}", file);
+	private byte[] getByteData(File file) {
 		FileInputStream fin = null;
 		FileChannel ch = null;
 		byte[] bytes = new byte[0];
 		try {
-			fin = new FileInputStream(f);
+			fin = new FileInputStream(file);
 			ch = fin.getChannel();
 			int size = (int) ch.size();
 			// 2기가까지만 가능
