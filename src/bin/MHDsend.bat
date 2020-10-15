@@ -27,6 +27,6 @@ goto SKIP_SET_JAVA_HOME
 set JAVA=%JAVA_HOME%\bin\java
 :SKIP_SET_JAVA_HOME
 set CP=%MHDSEND_HOME%\etc\MHDsend\
-forfiles /p %MHDSEND_HOME%\lib\ /M *.jar /c "cmd /c set CP=%CP%;@file"
+forfiles /p %MHDSEND_HOME%\bin\ /M *.jar /c "cmd \c set CP=%CP%;%MHDSEND_HOME%\lib\@file"
 
 "%JAVA%" %JAVA_OPTS% -cp "%CP%" %MAIN_CLASS% %ARGS%

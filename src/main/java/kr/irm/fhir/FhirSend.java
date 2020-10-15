@@ -1,6 +1,7 @@
 package kr.irm.fhir;
 
 import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.client.interceptor.BearerTokenAuthInterceptor;
 
@@ -18,7 +19,7 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.*;
 
-public class FhirSend extends UtilContext{
+public class FhirSend extends UtilContext {
 	private static final Logger LOG = LoggerFactory.getLogger(FhirSend.class);
 
 	public FhirSend() {
@@ -52,10 +53,11 @@ public class FhirSend extends UtilContext{
 
 		// Upload binary, reference, manifest
 		String patientResourceId = getPatientResourceId((String) optionMap.get(OPTION_PATIENT_ID), serverURL);
-		if (patientResourceId  == null) {
+			LOG.info("???:{}",patientResourceId);
+		if (patientResourceId == null) {
 			// try to create new patient
-		//	String patientResourceId = getPatientResourceId((String) optionMap.get(OPTION_PATIENT_ID), serverURL);
-			if (patientResourceId  == null) {
+//				patientResourceId = createPatientID((String) optionMap.get(OPTION_PATIENT_ID), serverURL);
+			if (patientResourceId == null) {
 				System.exit(5);
 			}
 		}
@@ -72,6 +74,7 @@ public class FhirSend extends UtilContext{
 		Binary binary = createBinary(optionMap);
 		addBinaryToBundle(binary, bundle);
 
+
 		boolean verbose = (boolean) optionMap.getOrDefault(OPTION_VERBOSE, Boolean.FALSE);
 		if (verbose) {
 			LOG.info("Request=\n{}", fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(bundle));
@@ -81,13 +84,15 @@ public class FhirSend extends UtilContext{
 			LOG.info("Response=\n{}", fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(responseBundle));
 		}
 
-		LOG.info("document provided");
-		System.exit(0);
-
-		LOG.error("document NOT provided: {}", "reason....");
-		System.exit(99);
-		//TODO exit code success or fail
-		LOG.info(String.valueOf(responseBundle.hasEntry()));
+		boolean bundleIsSuccess = responseBundle.hasEntry();
+		if (bundleIsSuccess) {
+			LOG.info("document provided");
+			System.exit(0);
+		}
+		else {
+			LOG.error("document NOT provided: {}", "reason....");
+			System.exit(99);
+		}
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -102,9 +107,9 @@ public class FhirSend extends UtilContext{
 			String patientUrl = patientUri.toURL().toString();
 
 			Bundle patientBundle = client.search()
-					.byUrl(patientUrl)
-					.returnBundle(Bundle.class)
-					.execute();
+				.byUrl(patientUrl)
+				.returnBundle(Bundle.class)
+				.execute();
 			if (patientBundle.getEntry().size() == 1) {
 				String patientResourceId = patientBundle.getEntry().get(0).getResource().getId();
 				LOG.info("patient found: resource={}", patientResourceId);
@@ -116,7 +121,32 @@ public class FhirSend extends UtilContext{
 		LOG.error("patient NOT found: id={}", patient_id);
 		return null;
 	}
+/*
+	private String createPatientID(String patient_id, String serverURL) {
+		// Create a patient object
+		Patient patient = new Patient();
+		patient.addIdentifier()
+			.setSystem("http://acme.org/mrns")
+			.setValue("12345");
+		patient.addName()
+			.setFamily("Jameson")
+			.addGiven("J")
+			.addGiven("Jonah");
+		patient.setGender(Enumerations.AdministrativeGender.MALE);
+		patient.setId(IdType.newRandomUuid());
+		FhirContext ctx = FhirContext.forR4();
 
+		IGenericClient pclient = ctx.newRestfulGenericClient("http://hapi.fhir.org/baseR4");
+		pclient.create().resource(patient).execute();
+		Patient p = pclient.search().forResource(Patient)
+		Bundle resp = pclient.transaction().withBundle(bundle).execute();
+
+// Log the response
+		LOG.info(ctx.newJsonParser().setPrettyPrint(true).encodeResourceToString(resp));
+
+		return null;
+	}
+	*/
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	private DocumentManifest createDocumentManifest(String patientResourceId, Map<String, Object> options) {
@@ -132,8 +162,8 @@ public class FhirSend extends UtilContext{
 			.setValue((String) options.get(OPTION_MANIFEST_UID));
 		manifest.setMasterIdentifier(identifier);
 		LOG.info("DocumentManifest.masterIdentifier={},{}",
-				manifest.getMasterIdentifier().getSystem(),
-				manifest.getMasterIdentifier().getValue());
+			manifest.getMasterIdentifier().getSystem(),
+			manifest.getMasterIdentifier().getValue());
 
 		// Identifier (Required)
 		manifest.addIdentifier()
@@ -141,8 +171,8 @@ public class FhirSend extends UtilContext{
 			.setSystem(IDENTIFIER_SYSTEM)
 			.setValue((String) options.get(OPTION_MANIFEST_UUID));
 		LOG.info("DocumentManifest.identifier={},{}",
-				manifest.getIdentifier().get(0).getSystem(),
-				manifest.getIdentifier().get(0).getValue());
+			manifest.getIdentifier().get(0).getSystem(),
+			manifest.getIdentifier().get(0).getValue());
 
 		// status
 		manifest.setStatus((Enumerations.DocumentReferenceStatus) options.get(OPTION_MANIFEST_STATUS));
@@ -153,10 +183,11 @@ public class FhirSend extends UtilContext{
 		CodeableConcept codeableConcept;
 		codeableConcept = createCodeableConcept(type);
 		manifest.setType(codeableConcept);
+		Coding coding = manifest.getType().getCoding().get(0);
 		LOG.info("DocumentManifest.type={},{},{}",
-			manifest.getType().getCoding().get(0).getSystem(),
-			manifest.getType().getCoding().get(0).getCode(),
-			manifest.getType().getCoding().get(0).getDisplay());
+			coding.getCode(),
+			coding.getDisplay(),
+			coding.getSystem());
 
 		// subject (Required)
 		Reference subjectReference = new Reference();
@@ -178,7 +209,7 @@ public class FhirSend extends UtilContext{
 
 		// content
 		List<Reference> references = new ArrayList<>();
-		references.add(new Reference((String)options.get(OPTION_DOCUMENT_UUID)));
+		references.add(new Reference((String) options.get(OPTION_DOCUMENT_UUID)));
 		manifest.setContent(references);
 		LOG.info("DocumentManifest.content={}", manifest.getContent().get(0).getReference());
 
@@ -208,16 +239,16 @@ public class FhirSend extends UtilContext{
 			.setValue((String) options.get(OPTION_DOCUMENT_UID));
 		documentReference.setMasterIdentifier(identifier);
 		LOG.info("DocumentReference.masterIdentifier={},{}",
-				documentReference.getMasterIdentifier().getSystem(),
-				documentReference.getMasterIdentifier().getValue());
+			documentReference.getMasterIdentifier().getSystem(),
+			documentReference.getMasterIdentifier().getValue());
 
 		// identifier (Required)
 		documentReference.addIdentifier().setUse(Identifier.IdentifierUse.OFFICIAL)
 			.setSystem(IDENTIFIER_SYSTEM)
 			.setValue((String) options.get(OPTION_DOCUMENT_UUID));
 		LOG.info("DocumentReference.identifier={},{}",
-				documentReference.getIdentifier().get(0).getSystem(),
-				documentReference.getIdentifier().get(0).getValue());
+			documentReference.getIdentifier().get(0).getSystem(),
+			documentReference.getIdentifier().get(0).getValue());
 
 		// status
 		documentReference.setStatus((Enumerations.DocumentReferenceStatus) options.get(OPTION_DOCUMENT_STATUS));
@@ -228,21 +259,24 @@ public class FhirSend extends UtilContext{
 		CodeableConcept codeableConcept;
 		codeableConcept = createCodeableConcept(type);
 		documentReference.setType(codeableConcept);
+		Coding coding = documentReference.getType().getCoding().get(0);
 		LOG.info("DocumentReference.type={},{},{}",
-			documentReference.getType().getCoding().get(0).getSystem(),
-			documentReference.getType().getCoding().get(0).getCode(),
-			documentReference.getType().getCoding().get(0).getDisplay());
+			coding.getCode(),
+			coding.getDisplay(),
+			coding.getSystem());
 
 		// category (Required)
 		Code category = (Code) options.get(OPTION_CATEGORY);
 		codeableConcept = createCodeableConcept(category);
+
 		List<CodeableConcept> codeableConceptList = new ArrayList<>();
 		codeableConceptList.add(codeableConcept);
 		documentReference.setCategory(codeableConceptList);
+		coding = documentReference.getCategory().get(0).getCoding().get(0);
 		LOG.info("DocumentReference.category={},{},{}",
-			documentReference.getCategory().get(0).getCoding().get(0).getSystem(),
-			documentReference.getCategory().get(0).getCoding().get(0).getCode(),
-			documentReference.getCategory().get(0).getCoding().get(0).getDisplay());
+			coding.getCode(),
+			coding.getDisplay(),
+			coding.getSystem());
 
 		// subject (Required)
 		Reference subjectReference = new Reference();
@@ -255,24 +289,41 @@ public class FhirSend extends UtilContext{
 		LOG.info("DocumentReference.date={}", documentReference.getDate().toString());
 
 		// content (Required / Optional)
-		String documentTitle = ((String) options.get(OPTION_DOCUMENT_TITLE));
-		List<DocumentReference.DocumentReferenceContentComponent> documentReferenceContentList = new ArrayList<>();
-		Attachment attachment = new Attachment();
+		String contentType = (String) options.get(OPTION_CONTENT_TYPE);
+		String binaryUuid = (String) options.get(OPTION_BINARY_UUID);
 		String language = (String) options.get(OPTION_LANGUAGE);
-		String binaryUUID = (String) options.get(OPTION_BINARY_UUID);
-		attachment.setContentType((String) options.get(OPTION_CONTENT_TYPE)).setUrl(binaryUUID).setSize(0).setTitle(documentTitle);
+		String documentTitle = (String) options.get(OPTION_DOCUMENT_TITLE);
+
+		Attachment attachment = new Attachment();
+		attachment.setContentType(contentType)
+			.setUrl(binaryUuid)
+			.setSize(0)
+			.setTitle(documentTitle);
 		if (language != null) {
 			attachment.setLanguage(language);
 		}
+
+		List<DocumentReference.DocumentReferenceContentComponent> documentReferenceContentList = new ArrayList<>();
 		documentReferenceContentList.add(new DocumentReference.DocumentReferenceContentComponent().setAttachment(attachment));
 		documentReference.setContent(documentReferenceContentList);
 		LOG.info("DocumentReference.attachment.contentType={}", attachment.getContentType());
-		LOG.info("DocumentReference.attachment.url={}", documentReference.getContent().get(0).getAttachment().getUrl());
-		LOG.info("DocumentReference.attachment.title={}", documentReference.getContent().get(0).getAttachment().getTitle());
-		LOG.info("DocumentReference.attachment.language={}", documentReference.getContent().get(0).getAttachment().getTitle());
+		LOG.info("DocumentReference.attachment.language={}", attachment.getLanguage());
+		LOG.info("DocumentReference.attachment.url={}", attachment.getUrl());
+		LOG.info("DocumentReference.attachment.title={}", attachment.getTitle());
 
 		// context (Optional)
 		DocumentReference.DocumentReferenceContextComponent documentReferenceContext = new DocumentReference.DocumentReferenceContextComponent();
+
+		@SuppressWarnings("unchecked")
+		List<Code> eventList = (List<Code>) options.get(OPTION_EVENT);
+		codeableConceptList = new ArrayList<>();
+		for (Code event : eventList) {
+			if (event.codeSystem != null) {
+				codeableConcept = createCodeableConcept(event);
+				codeableConceptList.add(codeableConcept);
+			}
+		}
+		documentReferenceContext.setEvent(codeableConceptList);
 
 		Code facility = (Code) options.get(OPTION_FACILITY);
 		if (facility.codeSystem != null) {
@@ -286,74 +337,69 @@ public class FhirSend extends UtilContext{
 			documentReferenceContext.setPracticeSetting(codeableConcept);
 		}
 
-		@SuppressWarnings("unchecked")
-		List<Code> eventList = (List<Code>) options.get(OPTION_EVENT);
-		codeableConceptList = new ArrayList<>();
-		for(Code event : eventList) {
-			if (event.codeSystem != null) {
-				codeableConcept = createCodeableConcept(event);
-				codeableConceptList.add(codeableConcept);
-			}
-		}
-		documentReferenceContext.setEvent(codeableConceptList);
-
 		List<Reference> relatedList;
-		if (options.get(OPTION_REFERENCE_ID) != null){
+		if (options.get(OPTION_REFERENCE_ID) != null) {
 			//noinspection unchecked
 			relatedList = (List<Reference>) options.get(OPTION_REFERENCE_ID);
-			if(!relatedList.isEmpty()){
+			if (!relatedList.isEmpty()) {
 				documentReferenceContext.setRelated(relatedList);
 			}
 		}
 		if (!documentReferenceContext.isEmpty()) {
 			documentReference.setContext(documentReferenceContext);
-			if (!documentReference.getContext().getPracticeSetting().isEmpty()) {
-				Coding coding = documentReference.getContext().getPracticeSetting().getCoding().get(0);
-				LOG.info("DocumentReference.context.practiceSetting={},{},{}",
-						coding.getCode(),
-						coding.getDisplay(),
-						coding.getSystem());
-			}
-			if (!documentReference.getContext().getFacilityType().isEmpty()) {
-				LOG.info("DocumentReference.context.facilityType={},{},{}",
-					documentReference.getContext().getFacilityType().getCoding().get(0).getSystem(),
-					documentReference.getContext().getFacilityType().getCoding().get(0).getCode(),
-					documentReference.getContext().getFacilityType().getCoding().get(0).getDisplay());
-			}
 			if (!documentReference.getContext().getEvent().isEmpty()) {
 				codeableConceptList = documentReference.getContext().getEvent();
 				for (CodeableConcept event : codeableConceptList) {
+					coding = event.getCoding().get(0);
 					LOG.info("DocumentReference.context.event={},{},{}",
-						event.getCoding().get(0).getSystem(), event.getCoding().get(0).getCode(), event.getCoding().get(0).getDisplay());
+						coding.getCode(),
+						coding.getSystem(),
+						coding.getDisplay());
 				}
+			}
+			if (!documentReference.getContext().getFacilityType().isEmpty()) {
+				coding = documentReference.getContext().getFacilityType().getCoding().get(0);
+				LOG.info("DocumentReference.context.facilityType={},{},{}",
+					coding.getCode(),
+					coding.getSystem(),
+					coding.getDisplay());
+			}
+			if (!documentReference.getContext().getPracticeSetting().isEmpty()) {
+				coding = documentReference.getContext().getPracticeSetting().getCoding().get(0);
+				LOG.info("DocumentReference.context.practiceSetting={},{},{}",
+					coding.getCode(),
+					coding.getDisplay(),
+					coding.getSystem());
 			}
 			if (!documentReference.getContext().getRelated().isEmpty()) {
 				relatedList = documentReference.getContext().getRelated();
 				for (Reference related : relatedList) {
-					LOG.info("DocumentReference.context.related type.code, system, value={},{},{}",
+					LOG.info("DocumentReference.context.related type.code,system,value={},{},{}",
 						related.getIdentifier().getType().getCoding().get(0).getCode(),
-						related.getIdentifier().getSystem(), related.getIdentifier().getValue());
+						related.getIdentifier().getSystem(),
+						related.getIdentifier().getValue());
 				}
 			}
 		}
 
 		// security label
+		//noinspection unchecked
 		List<Code> securityLabelList = (List<Code>) options.get(OPTION_SECURITY_LABEL);
 		codeableConceptList = new ArrayList<>();
-		for(Code label : securityLabelList) {
+		for (Code label : securityLabelList) {
 			if (label.codeSystem != null) {
 				codeableConcept = createCodeableConcept(label);
 				codeableConceptList.add(codeableConcept);
 			}
 		}
 		documentReference.setSecurityLabel(codeableConceptList);
-		if(!documentReference.getSecurityLabel().isEmpty()){
+		if (!documentReference.getSecurityLabel().isEmpty()) {
 			codeableConceptList = documentReference.getSecurityLabel();
 			for (CodeableConcept securityLabel : codeableConceptList) {
 				LOG.info("DocumentReference.securityLabel={},{},{}",
-						securityLabel.getCoding().get(0).getSystem(),
-						securityLabel.getCoding().get(0).getCode(),
-						securityLabel.getCoding().get(0).getDisplay());
+					securityLabel.getCoding().get(0).getSystem(),
+					securityLabel.getCoding().get(0).getCode(),
+					securityLabel.getCoding().get(0).getDisplay());
 			}
 		}
 		return (documentReference);
@@ -375,7 +421,7 @@ public class FhirSend extends UtilContext{
 		LOG.info("Binary.id={}", binary.getId());
 		LOG.info("Binary.contentType={}", binary.getContentType());
 
-		byte[] byteData = getByteData((File)options.get(OPTION_DATA_BINARY));
+		byte[] byteData = getByteData((File) options.get(OPTION_DATA_BINARY));
 		binary.setData(byteData);
 
 		return binary;
@@ -390,7 +436,7 @@ public class FhirSend extends UtilContext{
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	public static CodeableConcept createCodeableConcept(Code code) {
+	static CodeableConcept createCodeableConcept(Code code) {
 		CodeableConcept codeableConcept = new CodeableConcept();
 		if (code.displayName != null) {
 			codeableConcept.addCoding().setSystem(code.codeSystem).setCode(code.codeValue).setDisplay(code.displayName);
