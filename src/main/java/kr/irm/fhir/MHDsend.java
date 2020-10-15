@@ -8,8 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.*;
@@ -47,7 +45,7 @@ public class MHDsend extends UtilContext{
 		Enumerations.DocumentReferenceStatus document_status = Enumerations.DocumentReferenceStatus.CURRENT;
 
 		String binary_uuid = null;
-		File data_binary;
+		File data_binary_file = null;
 
 		error = false;
 		Options opts = new Options();
@@ -61,6 +59,10 @@ public class MHDsend extends UtilContext{
 		opts.addOption(null, OPTION_TIMEOUT, true, "Timeout in seconds (default: 30)");
 		opts.addOption("i", OPTION_PATIENT_ID, true, "Patient ID");
 		opts.addOption("v", OPTION_VERBOSE, false, "Show transaction logs");
+	//	create patient
+		// patient_name
+		// patient_sex
+		// patient_birth_date
 
 		// DocumentManifest
 		opts.addOption(null, OPTION_MANIFEST_UUID, true, "DocumentManifest.id (UUID)");
@@ -68,6 +70,7 @@ public class MHDsend extends UtilContext{
 		opts.addOption("m", OPTION_MANIFEST_TYPE, true, "DocumentManifest.type (code^display^system)");
 		opts.addOption(null, OPTION_MANIFEST_TITLE, true, "DocumentManifest.description");
 		opts.addOption(null, OPTION_MANIFEST_STATUS, true, "DocumentManifest.status (default: current)");
+	//	opts.addOption(null, OPTION_MANIFEST_UID, true, "DocumentManifest.masterIdentifier (UID)");	// generate manifest-uid string to uid
 
 		//DocumentReference
 		opts.addOption(null, OPTION_DOCUMENT_UUID, true, "DocumentReference.id (UUID)");
@@ -87,7 +90,6 @@ public class MHDsend extends UtilContext{
 		// Binary
 		opts.addOption(null, OPTION_BINARY_UUID, true, "Binary.id (UUID)");
 		opts.addOption("d", OPTION_DATA_BINARY, true, "Binary.data (filename)");
-
 
 		CommandLineParser parser = new DefaultParser();
 		try {
@@ -110,7 +112,7 @@ public class MHDsend extends UtilContext{
 				optionMap.put(OPTION_OAUTH_TOKEN, oauth_token);
 			} else {
 				error = true;
-				LOG.info("oauth_token Error = {}", cl.hasOption(OPTION_OAUTH_TOKEN));
+				LOG.error("option required: {}", OPTION_OAUTH_TOKEN);
 			}
 
 			// Server-url (Required)
@@ -125,10 +127,8 @@ public class MHDsend extends UtilContext{
 			// timeout
 			if (cl.hasOption(OPTION_TIMEOUT)) {
 				timeout = cl.getOptionValue(OPTION_TIMEOUT);
-				optionMap.put("timeout", timeout);
-			} else {
-				optionMap.put("timeout", timeout);
 			}
+			optionMap.put("timeout", timeout);
 
 			// patient-id (Required)
 			if (cl.hasOption(OPTION_PATIENT_ID)) {
@@ -147,6 +147,46 @@ public class MHDsend extends UtilContext{
 				optionMap.put(OPTION_VERBOSE, Boolean.FALSE);
 			}
 
+			/////////////////////////////////////////////////////////////////////////////
+			// Binary options
+
+			// binary-uuid
+			if (cl.hasOption(OPTION_BINARY_UUID)) {
+				String tmpUUID = cl.getOptionValue(OPTION_BINARY_UUID);
+				if (!checkUUID(tmpUUID)) {
+					error = true;
+					LOG.error("binary_uuid Error = {}", cl.getOptionValue(OPTION_BINARY_UUID));
+				} else {
+					if (!tmpUUID.startsWith(UUID_Prefix)) {
+						binary_uuid = UUID_Prefix + tmpUUID;
+					} else {
+						binary_uuid = tmpUUID;
+					}
+					optionMap.put(OPTION_BINARY_UUID, binary_uuid);
+				}
+			} else {
+				binary_uuid = newUUID();
+				optionMap.put(OPTION_BINARY_UUID, binary_uuid);
+			}
+
+			// data-binary
+			if (cl.hasOption(OPTION_DATA_BINARY)) {
+				String dataPath = cl.getOptionValue(OPTION_DATA_BINARY);
+				data_binary_file = new File(dataPath);
+				if (data_binary_file.exists() && data_binary_file.canRead()) {
+					optionMap.put(OPTION_DATA_BINARY, data_binary_file);
+				} else {
+					LOG.error("file NOT found: filename={}", data_binary_file);
+					error = true;
+				}
+			} else {
+				error = true;
+				LOG.error("option required: {}", OPTION_DATA_BINARY);
+			}
+
+			/////////////////////////////////////////////////////////////////////////////
+			// DocumentManifest options
+
 			// manifest-uuid (Required)
 			if (cl.hasOption(OPTION_MANIFEST_UUID)) {
 				String tmpUUID = cl.getOptionValue(OPTION_MANIFEST_UUID);
@@ -159,7 +199,7 @@ public class MHDsend extends UtilContext{
 					} else {
 						manifest_uuid = tmpUUID;
 					}
-				optionMap.put(OPTION_MANIFEST_UUID, manifest_uuid);
+					optionMap.put(OPTION_MANIFEST_UUID, manifest_uuid);
 				}
 			} else {
 				manifest_uuid = newUUID();
@@ -222,6 +262,9 @@ public class MHDsend extends UtilContext{
 			// source
 			source = newOID();
 			optionMap.put(OPTION_SOURCE, source);
+
+			/////////////////////////////////////////////////////////////////////////////
+			// DocumentReference options
 
 			// document-uuid (Required)
 			if (cl.hasOption(OPTION_DOCUMENT_UUID)) {
@@ -297,13 +340,8 @@ public class MHDsend extends UtilContext{
 			if (cl.hasOption(OPTION_DOCUMENT_TITLE)) {
 				document_title = cl.getOptionValue(OPTION_DOCUMENT_TITLE);
 				optionMap.put(OPTION_DOCUMENT_TITLE, document_title);
-			} else {
-				LOG.info("getOptionValue(data-binary) : {}", cl.getOptionValue(OPTION_DATA_BINARY));
-				document_title = getDocumentTitle(cl.getOptionValue(OPTION_DATA_BINARY));
-				if (document_title == null) {
-					LOG.error("document title is null");
-					error = true;
-				}
+			} else if (data_binary_file != null) {
+				document_title = data_binary_file.getName();
 				optionMap.put(OPTION_DOCUMENT_TITLE, document_title);
 			}
 
@@ -311,10 +349,8 @@ public class MHDsend extends UtilContext{
 			if (cl.hasOption(OPTION_DOCUMENT_STATUS)) {
 				String tmpStatus = cl.getOptionValue(OPTION_DOCUMENT_STATUS);
 				document_status = Enumerations.DocumentReferenceStatus.fromCode(tmpStatus);
-				optionMap.put(OPTION_DOCUMENT_STATUS, document_status);
-			} else {
-				optionMap.put(OPTION_DOCUMENT_STATUS, document_status);
 			}
+			optionMap.put(OPTION_DOCUMENT_STATUS, document_status);
 
 			// content-type
 			if (cl.hasOption(OPTION_CONTENT_TYPE)) {
@@ -328,9 +364,9 @@ public class MHDsend extends UtilContext{
 			// language
 			if (cl.hasOption(OPTION_LANGUAGE)) {
 				language = cl.getOptionValue(OPTION_LANGUAGE);
-				optionMap.put("language", language);
+				optionMap.put(OPTION_LANGUAGE, language);
 			} else {
-				optionMap.put("language", "en");
+				optionMap.put(OPTION_LANGUAGE, "en");
 			}
 
 			// facility
@@ -426,96 +462,45 @@ public class MHDsend extends UtilContext{
 				optionMap.put(OPTION_SECURITY_LABEL, security_label);
 			}
 
-			// binary-uuid
-			if (cl.hasOption(OPTION_BINARY_UUID)) {
-				String tmpUUID = cl.getOptionValue(OPTION_BINARY_UUID);
-				if (!checkUUID(tmpUUID)) {
-					error = true;
-					LOG.error("binary_uuid Error = {}", cl.getOptionValue(OPTION_BINARY_UUID));
-				} else {
-					if (!tmpUUID.startsWith(UUID_Prefix)) {
-						binary_uuid = UUID_Prefix + tmpUUID;
-					} else {
-						binary_uuid = tmpUUID;
-					}
-					optionMap.put(OPTION_BINARY_UUID, binary_uuid);
-				}
-			} else {
-				binary_uuid = newUUID();
-				optionMap.put(OPTION_BINARY_UUID, binary_uuid);
-			}
-
-			// data-binary
-			if (cl.hasOption(OPTION_DATA_BINARY)) {
-				String dataPath = cl.getOptionValue(OPTION_DATA_BINARY);
-				if ((data_binary = existFile(dataPath)) != null) {
-					optionMap.put(OPTION_DATA_BINARY, data_binary);
-				} else {
-					error = true;
-					LOG.error("data_binary Error : File does not exist");
-				}
-			} else {
-				error = true;
-				LOG.error("data_binary Error : {}", cl.getOptionValue(OPTION_DATA_BINARY));
-			}
-
 			if (error) {
 				System.exit(1);
 			}
+
+			/////////////////////////////////////////////////////////////////////////////
+
 			FhirSend fhirSend = new FhirSend();
 			fhirSend.sendFhir(optionMap);
-
 		} catch (ParseException e) {
 			e.printStackTrace();
 		}
 	}
 
-	private static File existFile(String dataPath) {
-		File file = new File(dataPath);
-		if (file.exists()) {
-			return file;
-		} else {
-			return null;
-		}
-	}
-
-	private static String getDocumentTitle(String data) {
-		if (data == null || data.isEmpty()) {
-			return null;
-		}
-		String[] title = data.split("\\/");
-		if (title.length == 1) {
-			return data;
-		} else {
-			return title[title.length - 1];
-		}
-	}
-
 	private static Reference createReferenceId(String referenceId) {
-		String[] referenceArr = referenceId.split("\\^");
-		Reference reference = new Reference();
+		String[] referenceIdComp = referenceId.split("\\^");
+
+		String idValue = referenceIdComp[0];
+		String idSystem = referenceIdComp[3];
+		String idType = referenceIdComp[4];
+
 		Identifier identifier = new Identifier();
-		String identifierValue = referenceArr[0];
-		String identifierSystem = referenceArr[3];
-		String identifierType = referenceArr[4];
-		// Set Identifier
-		identifier.setValue(identifierValue);
-		Code code = new Code(identifierType, IDENTIFIER_SYSTEM);
+		identifier.setValue(idValue);
+		identifier.setSystem(getAssignerId(idSystem));
+
+		Code code = new Code(idType, IDENTIFIER_SYSTEM);
 		identifier.setType(FhirSend.createCodeableConcept(code));
-		identifier.setSystem(getIdentifierSystemValue(identifierSystem));
+
+		Reference reference = new Reference();
 		reference.setIdentifier(identifier);
 		return reference;
 	}
 
-	private static String getIdentifierSystemValue(String identifierSystem) {
-		String[] tmpOid = identifierSystem.split("\\&");
-		String oidValue = tmpOid[1];
-		if (checkOID(oidValue)) {
-			if (!oidValue.startsWith(OID_Prefix)) {
-				oidValue = OID_Prefix + oidValue;
-			}
+	private static String getAssignerId(String idSystem) {
+		String[] idSystemComp = idSystem.split("\\&");
+		if (idSystemComp != null && idSystemComp.length > 1) {
+			return idSystemComp[1];
+		} else {
+			return null;
 		}
-		return oidValue;
 	}
 
 	private static boolean checkReferenceId(String referenceId) {
