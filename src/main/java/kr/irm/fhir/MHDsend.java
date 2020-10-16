@@ -105,7 +105,7 @@ public class MHDsend extends UtilContext {
 					"MHDsend [options]",
 					"\nSend a document to MHD DocumentRecipient", opts,
 					"Examples: $ ./MHDsend --document-status");
-				System.exit(0);
+				System.exit(2);
 			}
 
 			// OAuth token (Required)

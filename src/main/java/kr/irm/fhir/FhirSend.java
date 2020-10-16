@@ -58,7 +58,6 @@ public class FhirSend extends UtilContext {
 
 		// Upload binary, reference, manifest
 		String patientResourceId = getPatientResourceId((String) optionMap.get(OPTION_PATIENT_ID), serverURL);
-			LOG.info("???:{}",patientResourceId);
 		if (patientResourceId == null) {
 			// try to create new patient
 				patientResourceId = createPatientID(
@@ -133,7 +132,7 @@ public class FhirSend extends UtilContext {
 	}
 
 	private String createPatientID(String patient_id, String patient_name, String patient_sex, String patient_birthdate, String serverURL) {
-		// Create a patient object
+		String patientResourceId = null;
 		Patient patient = new Patient();
 		patient.addIdentifier().setValue(patient_id);
 		if (patient_name != null) {
@@ -149,10 +148,15 @@ public class FhirSend extends UtilContext {
 			}
 		}
 
-		IGenericClient patientClient = fhirContext.newRestfulGenericClient("http://hapi.fhir.org/baseR4");
+		IGenericClient patientClient = fhirContext.newRestfulGenericClient(serverURL);
 		MethodOutcome result = patientClient.create().resource(patient).prettyPrint().encodedJson().execute();
-
-		return null;
+		if (result.getCreated()) {
+			patientResourceId = getPatientResourceId(patient_id, serverURL);
+			LOG.info(patientResourceId);
+			return patientResourceId;
+		} else {
+			return null;
+		}
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////

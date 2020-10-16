@@ -22,6 +22,8 @@
             <includes>
                 <include>bin/MHDsend.sh</include>
                 <include>bin/MHDsend.bat</include>
+                <include>etc/SlideMicroscopy.jpg</include>
+                <include>etc/example.txt</include>
             </includes>
             <outputDirectory>.</outputDirectory>
             <fileMode>0755</fileMode>
