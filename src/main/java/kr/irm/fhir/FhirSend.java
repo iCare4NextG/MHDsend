@@ -1,6 +1,7 @@
 package kr.irm.fhir;
 
 import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.client.interceptor.BearerTokenAuthInterceptor;
 
@@ -34,13 +35,18 @@ public class FhirSend extends UtilContext {
 	void sendFhir(Map<String, Object> optionMap) {
 		// Setting (Header)
 		String serverURL = (String) optionMap.get(OPTION_SERVER_URL); //change = http or https check
-		String oauthToken = (String) optionMap.get(OPTION_OAUTH_TOKEN); //check 방법
-		int timeout = Integer.parseInt((String) optionMap.get(OPTION_TIMEOUT));
 		LOG.info("URL={}", serverURL);
 		client = fhirContext.newRestfulGenericClient(serverURL);
+
+		int timeout = Integer.parseInt((String) optionMap.get(OPTION_TIMEOUT));
 		fhirContext.getRestfulClientFactory().setSocketTimeout(timeout * 1000);
-		BearerTokenAuthInterceptor authInterceptor = new BearerTokenAuthInterceptor(oauthToken);
-		client.registerInterceptor(authInterceptor);
+
+		String oauthToken = (String) optionMap.get(OPTION_OAUTH_TOKEN); //check 방법
+		BearerTokenAuthInterceptor authInterceptor = null;
+		if (oauthToken != null) {
+			authInterceptor = new BearerTokenAuthInterceptor(oauthToken);
+			client.registerInterceptor(authInterceptor);
+		}
 		LOG.info("Setting Header");
 
 		// Setting (Bundle)
@@ -55,7 +61,12 @@ public class FhirSend extends UtilContext {
 			LOG.info("???:{}",patientResourceId);
 		if (patientResourceId == null) {
 			// try to create new patient
-				patientResourceId = createPatientID((String) optionMap.get(OPTION_PATIENT_ID), serverURL);
+				patientResourceId = createPatientID(
+					(String) optionMap.get(OPTION_PATIENT_ID),
+					(String) optionMap.get(OPTION_PATIENT_NANE),
+					(String) optionMap.get(OPTION_PATIENT_SEX),
+					(String) optionMap.get(OPTION_PATIENT_BIRTHDATE),
+					serverURL);
 			if (patientResourceId == null) {
 				System.exit(5);
 			}
@@ -121,31 +132,29 @@ public class FhirSend extends UtilContext {
 		return null;
 	}
 
-	private String createPatientID(String patient_id, String serverURL) {
+	private String createPatientID(String patient_id, String patient_name, String patient_sex, String patient_birthdate, String serverURL) {
 		// Create a patient object
 		Patient patient = new Patient();
-		patient.addIdentifier()
-			.setSystem("http://acme.org/mrns")
-			.setValue("12345");
-		patient.addName()
-			.setFamily("Jameson")
-			.addGiven("J")
-			.addGiven("Jonah");
-		patient.setGender(Enumerations.AdministrativeGender.MALE);
-	//	patient.setId(IdType.newRandomUuid());
-	//	FhirContext ctx = FhirContext.forR4();
+		patient.addIdentifier().setValue(patient_id);
+		if (patient_name != null) {
+			patient.addName().setFamily(patient_name);
+		}
+		if (patient_sex != null) {
+			if (patient_sex.equals("F")) {
+				patient.setGender(Enumerations.AdministrativeGender.FEMALE);
+			} else if (patient_sex.equals("M")) {
+				patient.setGender(Enumerations.AdministrativeGender.MALE);
+			} else {
+				LOG.error("Please enter the gender as F or M.");
+			}
+		}
 
-		IGenericClient pclient = fhirContext.newRestfulGenericClient("http://hapi.fhir.org/baseR4");
-		MethodOutcome result = pclient.create().resource(patient).prettyPrint().encodedJson().execute();
-	//	Patient p = pclient.search().forResource(Patient)
-	//	Bundle resp = pclient.transaction().withBundle(bundle).execute();
-
-// Log the response
-		LOG.info(fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(result.getResource()));
+		IGenericClient patientClient = fhirContext.newRestfulGenericClient("http://hapi.fhir.org/baseR4");
+		MethodOutcome result = patientClient.create().resource(patient).prettyPrint().encodedJson().execute();
 
 		return null;
 	}
-	*/
+
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	private DocumentManifest createDocumentManifest(String patientResourceId, Map<String, Object> options) {

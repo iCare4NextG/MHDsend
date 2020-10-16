@@ -23,6 +23,9 @@ public class MHDsend extends UtilContext {
 		String oauth_token;
 		String timeout = "30";
 		String patient_id;
+		String patient_name;
+		String patient_sex;
+		String patient_birthdate;
 
 		String manifest_uuid = null;
 		String manifest_uid = null;
@@ -110,8 +113,7 @@ public class MHDsend extends UtilContext {
 				oauth_token = cl.getOptionValue(OPTION_OAUTH_TOKEN);
 				optionMap.put(OPTION_OAUTH_TOKEN, oauth_token);
 			} else {
-				error = true;
-				LOG.error("option required: {}", OPTION_OAUTH_TOKEN);
+				optionMap.put(OPTION_OAUTH_TOKEN, null);
 			}
 
 			// Server-url (Required)
@@ -137,6 +139,33 @@ public class MHDsend extends UtilContext {
 			} else {
 				error = true;
 				LOG.error("option required: {}", OPTION_PATIENT_ID);
+			}
+
+			// patient-name
+			if (cl.hasOption(OPTION_PATIENT_NANE)) {
+				LOG.info("patient-name={}", cl.getOptionValue(OPTION_PATIENT_NANE));
+				patient_name = cl.getOptionValue(OPTION_PATIENT_NANE);
+				optionMap.put(OPTION_PATIENT_NANE, patient_name);
+			} else {
+				optionMap.put(OPTION_PATIENT_NANE, null);
+			}
+
+			// patient-sex
+			if (cl.hasOption(OPTION_PATIENT_SEX)) {
+				LOG.info("patient-sex={}", cl.getOptionValue(OPTION_PATIENT_SEX));
+				patient_sex = cl.getOptionValue(OPTION_PATIENT_SEX);
+				optionMap.put(OPTION_PATIENT_SEX, patient_sex);
+			} else {
+				optionMap.put(OPTION_PATIENT_SEX, null);
+			}
+
+			// patient-birthdate
+			if (cl.hasOption(OPTION_PATIENT_BIRTHDATE)) {
+				LOG.info("patient-birthdate={}", cl.getOptionValue(OPTION_PATIENT_BIRTHDATE));
+				patient_birthdate = cl.getOptionValue(OPTION_PATIENT_BIRTHDATE);
+				optionMap.put(OPTION_PATIENT_BIRTHDATE, patient_birthdate);
+			} else {
+				optionMap.put(OPTION_PATIENT_BIRTHDATE, null);
 			}
 
 			// Verbose
