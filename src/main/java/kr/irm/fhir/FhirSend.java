@@ -125,23 +125,27 @@ public class FhirSend extends UtilContext {
 		// Create a patient object
 		Patient patient = new Patient();
 		patient.addIdentifier()
-			.setValue("1z2c3s4d5w");
+			.setSystem("http://acme.org/mrns")
+			.setValue("12345");
 		patient.addName()
 			.setFamily("Jameson")
 			.addGiven("J")
 			.addGiven("Jonah");
 		patient.setGender(Enumerations.AdministrativeGender.MALE);
-		patient.setId(IdType.newRandomUuid());
-		FhirContext ctx = FhirContext.forR4();
+	//	patient.setId(IdType.newRandomUuid());
+	//	FhirContext ctx = FhirContext.forR4();
 
-		IGenericClient pclient = ctx.newRestfulGenericClient("http://hapi.fhir.org/baseR4");
-		pclient.create().resource(patient).encodedJson().execute();
+		IGenericClient pclient = fhirContext.newRestfulGenericClient("http://hapi.fhir.org/baseR4");
+		MethodOutcome result = pclient.create().resource(patient).prettyPrint().encodedJson().execute();
+	//	Patient p = pclient.search().forResource(Patient)
+	//	Bundle resp = pclient.transaction().withBundle(bundle).execute();
 
 // Log the response
+		LOG.info(fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(result.getResource()));
 
 		return null;
 	}
-
+	*/
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	private DocumentManifest createDocumentManifest(String patientResourceId, Map<String, Object> options) {

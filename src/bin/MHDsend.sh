@@ -17,7 +17,7 @@ if [ "x$JAVA_HOME" != "x" ]; then
     JAVA=$JAVA_HOME/bin/java
 else
     JAVA="java"
-fiMHDsend.bat
+fi
 
 # Setup the classpath
 CP="$MHDSEND_HOME/etc/MHDsend/"
