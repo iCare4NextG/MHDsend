@@ -1,7 +1,6 @@
 package kr.irm.fhir;
 
 import ca.uhn.fhir.context.FhirContext;
-import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.client.interceptor.BearerTokenAuthInterceptor;
 
@@ -107,9 +106,9 @@ public class FhirSend extends UtilContext {
 			String patientUrl = patientUri.toURL().toString();
 
 			Bundle patientBundle = client.search()
-				.byUrl(patientUrl)
-				.returnBundle(Bundle.class)
-				.execute();
+					.byUrl(patientUrl)
+					.returnBundle(Bundle.class)
+					.execute();
 			if (patientBundle.getEntry().size() == 1) {
 				String patientResourceId = patientBundle.getEntry().get(0).getResource().getId();
 				LOG.info("patient found: resource={}", patientResourceId);
@@ -158,21 +157,21 @@ public class FhirSend extends UtilContext {
 		// MasterIdentifier (Required)
 		Identifier identifier = new Identifier();
 		identifier
-			.setSystem(IDENTIFIER_SYSTEM)
-			.setValue((String) options.get(OPTION_MANIFEST_UID));
+				.setSystem(IDENTIFIER_SYSTEM)
+				.setValue((String) options.get(OPTION_MANIFEST_UID));
 		manifest.setMasterIdentifier(identifier);
 		LOG.info("DocumentManifest.masterIdentifier={},{}",
-			manifest.getMasterIdentifier().getSystem(),
-			manifest.getMasterIdentifier().getValue());
+				manifest.getMasterIdentifier().getSystem(),
+				manifest.getMasterIdentifier().getValue());
 
 		// Identifier (Required)
 		manifest.addIdentifier()
-			.setUse(Identifier.IdentifierUse.OFFICIAL)
-			.setSystem(IDENTIFIER_SYSTEM)
-			.setValue((String) options.get(OPTION_MANIFEST_UUID));
+				.setUse(Identifier.IdentifierUse.OFFICIAL)
+				.setSystem(IDENTIFIER_SYSTEM)
+				.setValue((String) options.get(OPTION_MANIFEST_UUID));
 		LOG.info("DocumentManifest.identifier={},{}",
-			manifest.getIdentifier().get(0).getSystem(),
-			manifest.getIdentifier().get(0).getValue());
+				manifest.getIdentifier().get(0).getValue(),
+				manifest.getIdentifier().get(0).getSystem());
 
 		// status
 		manifest.setStatus((Enumerations.DocumentReferenceStatus) options.get(OPTION_MANIFEST_STATUS));
@@ -235,20 +234,20 @@ public class FhirSend extends UtilContext {
 		// masterIdentifier (Required)
 		Identifier identifier = new Identifier();
 		identifier
-			.setSystem(IDENTIFIER_SYSTEM)
-			.setValue((String) options.get(OPTION_DOCUMENT_UID));
+				.setSystem(IDENTIFIER_SYSTEM)
+				.setValue((String) options.get(OPTION_DOCUMENT_UID));
 		documentReference.setMasterIdentifier(identifier);
 		LOG.info("DocumentReference.masterIdentifier={},{}",
-			documentReference.getMasterIdentifier().getSystem(),
-			documentReference.getMasterIdentifier().getValue());
+				documentReference.getMasterIdentifier().getValue(),
+				documentReference.getMasterIdentifier().getSystem());
 
 		// identifier (Required)
 		documentReference.addIdentifier().setUse(Identifier.IdentifierUse.OFFICIAL)
-			.setSystem(IDENTIFIER_SYSTEM)
-			.setValue((String) options.get(OPTION_DOCUMENT_UUID));
+				.setSystem(IDENTIFIER_SYSTEM)
+				.setValue((String) options.get(OPTION_DOCUMENT_UUID));
 		LOG.info("DocumentReference.identifier={},{}",
-			documentReference.getIdentifier().get(0).getSystem(),
-			documentReference.getIdentifier().get(0).getValue());
+				documentReference.getIdentifier().get(0).getValue(),
+				documentReference.getIdentifier().get(0).getSystem());
 
 		// status
 		documentReference.setStatus((Enumerations.DocumentReferenceStatus) options.get(OPTION_DOCUMENT_STATUS));
@@ -261,9 +260,9 @@ public class FhirSend extends UtilContext {
 		documentReference.setType(codeableConcept);
 		Coding coding = documentReference.getType().getCoding().get(0);
 		LOG.info("DocumentReference.type={},{},{}",
-			coding.getCode(),
-			coding.getDisplay(),
-			coding.getSystem());
+				coding.getCode(),
+				coding.getDisplay(),
+				coding.getSystem());
 
 		// category (Required)
 		Code category = (Code) options.get(OPTION_CATEGORY);
@@ -274,9 +273,9 @@ public class FhirSend extends UtilContext {
 		documentReference.setCategory(codeableConceptList);
 		coding = documentReference.getCategory().get(0).getCoding().get(0);
 		LOG.info("DocumentReference.category={},{},{}",
-			coding.getCode(),
-			coding.getDisplay(),
-			coding.getSystem());
+				coding.getCode(),
+				coding.getDisplay(),
+				coding.getSystem());
 
 		// subject (Required)
 		Reference subjectReference = new Reference();
@@ -296,9 +295,9 @@ public class FhirSend extends UtilContext {
 
 		Attachment attachment = new Attachment();
 		attachment.setContentType(contentType)
-			.setUrl(binaryUuid)
-			.setSize(0)
-			.setTitle(documentTitle);
+				.setUrl(binaryUuid)
+				.setSize(0)
+				.setTitle(documentTitle);
 		if (language != null) {
 			attachment.setLanguage(language);
 		}
@@ -352,32 +351,32 @@ public class FhirSend extends UtilContext {
 				for (CodeableConcept event : codeableConceptList) {
 					coding = event.getCoding().get(0);
 					LOG.info("DocumentReference.context.event={},{},{}",
-						coding.getCode(),
-						coding.getSystem(),
-						coding.getDisplay());
+							coding.getCode(),
+							coding.getSystem(),
+							coding.getDisplay());
 				}
 			}
 			if (!documentReference.getContext().getFacilityType().isEmpty()) {
 				coding = documentReference.getContext().getFacilityType().getCoding().get(0);
 				LOG.info("DocumentReference.context.facilityType={},{},{}",
-					coding.getCode(),
-					coding.getSystem(),
-					coding.getDisplay());
+						coding.getCode(),
+						coding.getSystem(),
+						coding.getDisplay());
 			}
 			if (!documentReference.getContext().getPracticeSetting().isEmpty()) {
 				coding = documentReference.getContext().getPracticeSetting().getCoding().get(0);
 				LOG.info("DocumentReference.context.practiceSetting={},{},{}",
-					coding.getCode(),
-					coding.getDisplay(),
-					coding.getSystem());
+						coding.getCode(),
+						coding.getDisplay(),
+						coding.getSystem());
 			}
 			if (!documentReference.getContext().getRelated().isEmpty()) {
 				relatedList = documentReference.getContext().getRelated();
 				for (Reference related : relatedList) {
 					LOG.info("DocumentReference.context.related type.code,system,value={},{},{}",
-						related.getIdentifier().getType().getCoding().get(0).getCode(),
-						related.getIdentifier().getSystem(),
-						related.getIdentifier().getValue());
+							related.getIdentifier().getType().getCoding().get(0).getCode(),
+							related.getIdentifier().getSystem(),
+							related.getIdentifier().getValue());
 				}
 			}
 		}
@@ -397,9 +396,9 @@ public class FhirSend extends UtilContext {
 			codeableConceptList = documentReference.getSecurityLabel();
 			for (CodeableConcept securityLabel : codeableConceptList) {
 				LOG.info("DocumentReference.securityLabel={},{},{}",
-					securityLabel.getCoding().get(0).getSystem(),
-					securityLabel.getCoding().get(0).getCode(),
-					securityLabel.getCoding().get(0).getDisplay());
+						securityLabel.getCoding().get(0).getCode(),
+						securityLabel.getCoding().get(0).getSystem(),
+						securityLabel.getCoding().get(0).getDisplay());
 			}
 		}
 		return (documentReference);

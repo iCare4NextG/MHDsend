@@ -55,14 +55,13 @@ public class MHDsend extends UtilContext {
 
 		// Commons
 		opts.addOption("o", OPTION_OAUTH_TOKEN, true, "OAuth Token");
-		opts.addOption("s", OPTION_SERVER_URL, true, "Server URL");
+		opts.addOption("s", OPTION_SERVER_URL, true, "FHIR Server Base URL");
 		opts.addOption(null, OPTION_TIMEOUT, true, "Timeout in seconds (default: 30)");
-		opts.addOption("i", OPTION_PATIENT_ID, true, "Patient ID");
 		opts.addOption("v", OPTION_VERBOSE, false, "Show transaction logs");
-		//	create patient
-		// patient_name
-		// patient_sex
-		// patient_birth_date
+		opts.addOption("i", OPTION_PATIENT_ID, true, "Patient.identifier (ID)");
+		opts.addOption(null, OPTION_PATIENT_NANE, true, "Patient.identifier (ID)");
+		opts.addOption(null, OPTION_PATIENT_SEX, true, "Patient.identifier (ID)");
+		opts.addOption(null, OPTION_PATIENT_BIRTHDATE, true, "Patient.identifier (ID)");
 
 		// DocumentManifest
 		opts.addOption(null, OPTION_MANIFEST_UUID, true, "DocumentManifest.id (UUID)");
@@ -70,7 +69,7 @@ public class MHDsend extends UtilContext {
 		opts.addOption(null, OPTION_MANIFEST_STATUS, true, "DocumentManifest.status (default: current)");
 		opts.addOption("m", OPTION_MANIFEST_TYPE, true, "DocumentManifest.type (code^display^system)");
 		opts.addOption(null, OPTION_MANIFEST_TITLE, true, "DocumentManifest.description");
-		opts.addOption(null, OPTION_MANIFEST_UID_SEED, true, "String ID for DocumentManifest.masterIdentifier (UID)");
+		opts.addOption(null, OPTION_MANIFEST_UID_SEED, true, "DocumentManifest.masterIdentifier (seed)");
 
 		//DocumentReference
 		opts.addOption(null, OPTION_DOCUMENT_UUID, true, "DocumentReference.id (UUID)");
@@ -100,7 +99,7 @@ public class MHDsend extends UtilContext {
 			if (cl.hasOption("h") || args.length == 0) {
 				HelpFormatter formatter = new HelpFormatter();
 				formatter.printHelp(
-					"MHDsend [<options>]",
+					"MHDsend [options]",
 					"\nSend a document to MHD DocumentRecipient", opts,
 					"Examples: $ ./MHDsend --document-status");
 				System.exit(0);

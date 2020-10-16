@@ -20,7 +20,8 @@
         <fileSet>
             <directory>src</directory>
             <includes>
-                <include>bin/MHDsend</include>
+                <include>bin/MHDsend.sh</include>
+                <include>bin/MHDsend.bat</include>
             </includes>
             <outputDirectory>.</outputDirectory>
             <fileMode>0755</fileMode>
