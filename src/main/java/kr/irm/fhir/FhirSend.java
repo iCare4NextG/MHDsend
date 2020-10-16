@@ -1,6 +1,7 @@
 package kr.irm.fhir;
 
 import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.client.interceptor.BearerTokenAuthInterceptor;
 
@@ -55,7 +56,7 @@ public class FhirSend extends UtilContext {
 			LOG.info("???:{}",patientResourceId);
 		if (patientResourceId == null) {
 			// try to create new patient
-//				patientResourceId = createPatientID((String) optionMap.get(OPTION_PATIENT_ID), serverURL);
+				patientResourceId = createPatientID((String) optionMap.get(OPTION_PATIENT_ID), serverURL);
 			if (patientResourceId == null) {
 				System.exit(5);
 			}
@@ -120,7 +121,7 @@ public class FhirSend extends UtilContext {
 		LOG.error("patient NOT found: id={}", patient_id);
 		return null;
 	}
-/*
+
 	private String createPatientID(String patient_id, String serverURL) {
 		// Create a patient object
 		Patient patient = new Patient();
@@ -132,20 +133,20 @@ public class FhirSend extends UtilContext {
 			.addGiven("J")
 			.addGiven("Jonah");
 		patient.setGender(Enumerations.AdministrativeGender.MALE);
-		patient.setId(IdType.newRandomUuid());
-		FhirContext ctx = FhirContext.forR4();
+	//	patient.setId(IdType.newRandomUuid());
+	//	FhirContext ctx = FhirContext.forR4();
 
-		IGenericClient pclient = ctx.newRestfulGenericClient("http://hapi.fhir.org/baseR4");
-		pclient.create().resource(patient).execute();
-		Patient p = pclient.search().forResource(Patient)
-		Bundle resp = pclient.transaction().withBundle(bundle).execute();
+		IGenericClient pclient = fhirContext.newRestfulGenericClient("http://hapi.fhir.org/baseR4");
+		MethodOutcome result = pclient.create().resource(patient).prettyPrint().encodedJson().execute();
+	//	Patient p = pclient.search().forResource(Patient)
+	//	Bundle resp = pclient.transaction().withBundle(bundle).execute();
 
 // Log the response
-		LOG.info(ctx.newJsonParser().setPrettyPrint(true).encodeResourceToString(resp));
+		LOG.info(fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(result.getResource()));
 
 		return null;
 	}
-	*/
+
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	private DocumentManifest createDocumentManifest(String patientResourceId, Map<String, Object> options) {
