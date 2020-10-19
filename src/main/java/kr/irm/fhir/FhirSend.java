@@ -17,6 +17,8 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class FhirSend extends UtilContext {
@@ -147,7 +149,15 @@ public class FhirSend extends UtilContext {
 				LOG.error("Please enter the gender as F or M.");
 			}
 		}
-
+		if (patient_birthdate != null) {
+			SimpleDateFormat dataFormat = new SimpleDateFormat("yyyy-mm-dd");
+			try {
+				Date birthDate = dataFormat.parse(patient_birthdate);
+				patient.setBirthDate(birthDate);
+			} catch (ParseException e) {
+				e.printStackTrace();
+			}
+		}
 		IGenericClient patientClient = fhirContext.newRestfulGenericClient(serverURL);
 		MethodOutcome result = patientClient.create().resource(patient).prettyPrint().encodedJson().execute();
 		if (result.getCreated()) {
