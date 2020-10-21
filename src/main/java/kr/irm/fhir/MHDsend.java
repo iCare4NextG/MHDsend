@@ -45,7 +45,7 @@ public class MHDsend extends UtilContext {
 		Date document_date = null;
 		List<Code> security_label;
 		String content_type;
-		String language = "en";
+		String language = null;
 		String document_title;
 		List<Code> event;
 		Code facility;
@@ -85,7 +85,7 @@ public class MHDsend extends UtilContext {
 		opts.addOption(null, OPTION_DOCUMENT_STATUS, true, "DocumentReference.status (default: current)");
 		opts.addOption("t", OPTION_TYPE, true, "DocumentReference.type (code^display^system)");
 		opts.addOption("c", OPTION_CATEGORY, true, "DocumentReference.category (code^display^system)");
-		opts.addOption(null, OPTION_DOCUMENT_DATE, true, "DocumentReference.date (yyyymmdd)");
+		opts.addOption(null, OPTION_DOCUMENT_CREATED, true, "DocumentReference.content.attachment.creation (yyyymmdd)");
 		opts.addOption("l", OPTION_SECURITY_LABEL, true, "DocumentReference.securityLabel - multiple (code^display^system)");
 		opts.addOption(null, OPTION_CONTENT_TYPE, true, "DocumentReference.content.attachment.contentType (MIME type)");
 		opts.addOption(null, OPTION_LANGUAGE, true, "DocumentReference.content.attachment.language");
@@ -396,16 +396,16 @@ public class MHDsend extends UtilContext {
 			}
 
 			// document-date
-			if (cl.hasOption(OPTION_DOCUMENT_DATE)) {
-				date = cl.getOptionValue(OPTION_DOCUMENT_DATE);
+			if (cl.hasOption(OPTION_DOCUMENT_CREATED)) {
+				date = cl.getOptionValue(OPTION_DOCUMENT_CREATED);
 				if ((document_date = checkDate(date)) != null) {
-					optionMap.put(OPTION_DOCUMENT_DATE, document_date);
+					optionMap.put(OPTION_DOCUMENT_CREATED, document_date);
 				} else {
 					error = true;
-					LOG.error("format doees not match: {}", OPTION_DOCUMENT_DATE);
+					LOG.error("format doees not match: {}", OPTION_DOCUMENT_CREATED);
 				}
 			} else {
-				optionMap.put(OPTION_DOCUMENT_DATE, document_date);
+				optionMap.put(OPTION_DOCUMENT_CREATED, document_date);
 			}
 
 			// security-label

@@ -38,7 +38,7 @@ public class UtilContext {
 	public static final String OPTION_TYPE = "type";
 	public static final String OPTION_CATEGORY = "category";
 	//subject
-	public static final String OPTION_DOCUMENT_DATE = "document-date";
+	public static final String OPTION_DOCUMENT_CREATED = "document-created";
 	public static final String OPTION_SECURITY_LABEL = "security-label";
 	public static final String OPTION_CONTENT_TYPE = "content-type";
 	public static final String OPTION_LANGUAGE = "language";

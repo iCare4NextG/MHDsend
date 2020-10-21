@@ -85,11 +85,7 @@ public class FhirSend extends UtilContext {
 		Binary binary = createBinary(optionMap);
 		addBinaryToBundle(binary, bundle);
 
-
 		boolean verbose = (boolean) optionMap.getOrDefault(OPTION_VERBOSE, Boolean.FALSE);
-		
-		
-
 
 		if (verbose) {
 			LOG.info("Request=\n{}", fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(bundle));
@@ -317,37 +313,42 @@ public class FhirSend extends UtilContext {
 		documentReference.setSubject(subjectReference);
 		LOG.info("DocumentReference.subject={}", documentReference.getSubject().getReference());
 
-		// date
-		Date date = (Date) options.get(OPTION_DOCUMENT_DATE);
+		// created
+		Date date = (Date) options.get(OPTION_DOCUMENT_CREATED);
 		if (date != null) {
 			documentReference.setDate(date);
 		} else{
 			documentReference.setDate(new Date());
 		}
-		LOG.info("DocumentReference.date={}", documentReference.getDate().toString());
+		LOG.info("DocumentReference.date={}", documentReference.getDate());
 
 		// content (Required / Optional)
-		String contentType = (String) options.get(OPTION_CONTENT_TYPE);
-		String binaryUuid = (String) options.get(OPTION_BINARY_UUID);
-		String language = (String) options.get(OPTION_LANGUAGE);
-		String documentTitle = (String) options.get(OPTION_DOCUMENT_TITLE);
-
 		Attachment attachment = new Attachment();
-		attachment.setContentType(contentType)
-			.setUrl(binaryUuid)
-			.setSize(0)
-			.setTitle(documentTitle);
-		if (language != null) {
-			attachment.setLanguage(language);
+
+		String contentType = (String) options.get(OPTION_CONTENT_TYPE);
+		attachment.setContentType(contentType);
+		LOG.info("DocumentReference.attachment.contentType={}", attachment.getContentType());
+
+		String binaryUuid = (String) options.get(OPTION_BINARY_UUID);
+		attachment.setUrl(binaryUuid);
+		LOG.info("DocumentReference.attachment.url={}", attachment.getUrl());
+
+		String documentTitle = (String) options.get(OPTION_DOCUMENT_TITLE);
+		attachment.setTitle(documentTitle);
+		LOG.info("DocumentReference.attachment.title={}", attachment.getTitle());
+
+		String language = (String) options.get(OPTION_LANGUAGE);
+		attachment.setLanguage(language);
+		LOG.info("DocumentReference.attachment.language={}", attachment.getLanguage());
+
+		if (date != null) {
+			attachment.setCreation(date);
+			LOG.info("DocumentReference.attachment.creation={}", attachment.getCreation());
 		}
 
 		List<DocumentReference.DocumentReferenceContentComponent> documentReferenceContentList = new ArrayList<>();
 		documentReferenceContentList.add(new DocumentReference.DocumentReferenceContentComponent().setAttachment(attachment));
 		documentReference.setContent(documentReferenceContentList);
-		LOG.info("DocumentReference.attachment.contentType={}", attachment.getContentType());
-		LOG.info("DocumentReference.attachment.language={}", attachment.getLanguage());
-		LOG.info("DocumentReference.attachment.url={}", attachment.getUrl());
-		LOG.info("DocumentReference.attachment.title={}", attachment.getTitle());
 
 		// context (Optional)
 		DocumentReference.DocumentReferenceContextComponent documentReferenceContext = new DocumentReference.DocumentReferenceContextComponent();
