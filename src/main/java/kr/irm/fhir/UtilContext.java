@@ -26,6 +26,7 @@ public class UtilContext {
 	public static final String OPTION_MANIFEST_UID = "manifest-uid";
 	public static final String OPTION_MANIFEST_STATUS = "manifest-status";
 	public static final String OPTION_MANIFEST_TYPE = "manifest-type";
+	public static final String OPTION_MANIFEST_CREATED = "manifest-created";
 	public static final String OPTION_SOURCE = "source";
 	public static final String OPTION_MANIFEST_TITLE = "manifest-title";
 	public static final String OPTION_MANIFEST_UID_SEED = "manifest-uid-seed";
@@ -37,7 +38,7 @@ public class UtilContext {
 	public static final String OPTION_TYPE = "type";
 	public static final String OPTION_CATEGORY = "category";
 	//subject
-	//date
+	public static final String OPTION_DOCUMENT_DATE = "document-date";
 	public static final String OPTION_SECURITY_LABEL = "security-label";
 	public static final String OPTION_CONTENT_TYPE = "content-type";
 	public static final String OPTION_LANGUAGE = "language";

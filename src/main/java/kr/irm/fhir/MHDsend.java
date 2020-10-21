@@ -11,12 +11,14 @@ import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class MHDsend extends UtilContext {
 	private static final Logger LOG = LoggerFactory.getLogger(MHDsend.class);
 
 	public static void main(String[] args) {
+		LOG.info("args:{} ", Arrays.toString(args));
 		boolean error;
 
 		String server_url;
@@ -31,6 +33,7 @@ public class MHDsend extends UtilContext {
 		String manifest_uid = null;
 		Enumerations.DocumentReferenceStatus manifest_status = Enumerations.DocumentReferenceStatus.CURRENT;
 		Code manifest_type;
+		Date manifest_created = null;
 		String source;
 		String manifest_title;
 
@@ -39,6 +42,7 @@ public class MHDsend extends UtilContext {
 		Enumerations.DocumentReferenceStatus document_status = Enumerations.DocumentReferenceStatus.CURRENT;
 		Code type;
 		Code category;
+		Date document_date = null;
 		List<Code> security_label;
 		String content_type;
 		String language = "en";
@@ -71,6 +75,7 @@ public class MHDsend extends UtilContext {
 		opts.addOption(null, OPTION_MANIFEST_UID, true, "DocumentManifest.masterIdentifier (UID)");
 		opts.addOption(null, OPTION_MANIFEST_STATUS, true, "DocumentManifest.status (default: current)");
 		opts.addOption("m", OPTION_MANIFEST_TYPE, true, "DocumentManifest.type (code^display^system)");
+		opts.addOption(null, OPTION_MANIFEST_CREATED, true, "DocumentManifest.created (yyyymmdd)");
 		opts.addOption(null, OPTION_MANIFEST_TITLE, true, "DocumentManifest.description");
 		opts.addOption(null, OPTION_MANIFEST_UID_SEED, true, "DocumentManifest.masterIdentifier (seed)");
 
@@ -80,6 +85,7 @@ public class MHDsend extends UtilContext {
 		opts.addOption(null, OPTION_DOCUMENT_STATUS, true, "DocumentReference.status (default: current)");
 		opts.addOption("t", OPTION_TYPE, true, "DocumentReference.type (code^display^system)");
 		opts.addOption("c", OPTION_CATEGORY, true, "DocumentReference.category (code^display^system)");
+		opts.addOption(null, OPTION_DOCUMENT_DATE, true, "DocumentReference.date (yyyymmdd)");
 		opts.addOption("l", OPTION_SECURITY_LABEL, true, "DocumentReference.securityLabel - multiple (code^display^system)");
 		opts.addOption(null, OPTION_CONTENT_TYPE, true, "DocumentReference.content.attachment.contentType (MIME type)");
 		opts.addOption(null, OPTION_LANGUAGE, true, "DocumentReference.content.attachment.language");
@@ -281,6 +287,20 @@ public class MHDsend extends UtilContext {
 				LOG.error("option required: {}", OPTION_MANIFEST_TYPE);
 			}
 
+			// manifest-created
+			String date;
+			if (cl.hasOption(OPTION_MANIFEST_CREATED)) {
+				date = cl.getOptionValue(OPTION_MANIFEST_CREATED);
+				if ((manifest_created = checkDate(date) )!= null) {
+					optionMap.put(OPTION_MANIFEST_CREATED, manifest_created);
+				} else {
+					error = true;
+					LOG.error("format doees not match: {}", OPTION_MANIFEST_CREATED);
+				}
+			} else {
+				optionMap.put(OPTION_MANIFEST_CREATED, manifest_created);
+			}
+
 			// source
 			source = newOID();
 			optionMap.put(OPTION_SOURCE, source);
@@ -373,6 +393,19 @@ public class MHDsend extends UtilContext {
 			} else {
 				error = true;
 				LOG.error("option required: {}", OPTION_CATEGORY);
+			}
+
+			// document-date
+			if (cl.hasOption(OPTION_DOCUMENT_DATE)) {
+				date = cl.getOptionValue(OPTION_DOCUMENT_DATE);
+				if ((document_date = checkDate(date)) != null) {
+					optionMap.put(OPTION_DOCUMENT_DATE, document_date);
+				} else {
+					error = true;
+					LOG.error("format doees not match: {}", OPTION_DOCUMENT_DATE);
+				}
+			} else {
+				optionMap.put(OPTION_DOCUMENT_DATE, document_date);
 			}
 
 			// security-label
@@ -505,6 +538,8 @@ public class MHDsend extends UtilContext {
 		}
 	}
 
+
+
 	private static String newOIDbyString(String uidSeed) {
 		BigInteger bi = null;
 		try {
@@ -565,6 +600,18 @@ public class MHDsend extends UtilContext {
 			return false;
 		}
 		return true;
+	}
+
+	private static Date checkDate(String date) {
+		SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
+		Date tempDate = null;
+		try {
+			tempDate = dateFormat.parse(date);
+			return tempDate;
+		} catch (java.text.ParseException e) {
+			e.printStackTrace();
+			return null;
+		}
 	}
 
 	private static boolean checkOID(String oidValue) {

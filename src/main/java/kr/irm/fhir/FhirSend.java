@@ -87,6 +87,10 @@ public class FhirSend extends UtilContext {
 
 
 		boolean verbose = (boolean) optionMap.getOrDefault(OPTION_VERBOSE, Boolean.FALSE);
+		
+		
+
+
 		if (verbose) {
 			LOG.info("Request=\n{}", fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(bundle));
 		}
@@ -139,7 +143,8 @@ public class FhirSend extends UtilContext {
 		patient.addIdentifier().setValue(patient_id);
 		if (patient_name != null) {
 			patient.addName().setFamily(patient_name);
-		}
+		} 
+
 		if (patient_sex != null) {
 			if (patient_sex.equals("F")) {
 				patient.setGender(Enumerations.AdministrativeGender.FEMALE);
@@ -158,6 +163,7 @@ public class FhirSend extends UtilContext {
 				e.printStackTrace();
 			}
 		}
+		LOG.info("patient info : {}", patient);
 		IGenericClient patientClient = fhirContext.newRestfulGenericClient(serverURL);
 		MethodOutcome result = patientClient.create().resource(patient).prettyPrint().encodedJson().execute();
 		if (result.getCreated()) {
@@ -218,7 +224,12 @@ public class FhirSend extends UtilContext {
 		LOG.info("DocumentManifest.subject={}", manifest.getSubject().getReference());
 
 		// created
-		manifest.setCreated(new Date());
+		Date date = (Date) options.get(OPTION_MANIFEST_CREATED);
+		if (date != null) {
+			manifest.setCreated(date);
+		} else{
+			manifest.setCreated(new Date());
+		}
 		LOG.info("DocumentManifest.created={}", manifest.getCreated().toString());
 
 		// source
@@ -307,7 +318,12 @@ public class FhirSend extends UtilContext {
 		LOG.info("DocumentReference.subject={}", documentReference.getSubject().getReference());
 
 		// date
-		documentReference.setDate(new Date());
+		Date date = (Date) options.get(OPTION_DOCUMENT_DATE);
+		if (date != null) {
+			documentReference.setDate(date);
+		} else{
+			documentReference.setDate(new Date());
+		}
 		LOG.info("DocumentReference.date={}", documentReference.getDate().toString());
 
 		// content (Required / Optional)
