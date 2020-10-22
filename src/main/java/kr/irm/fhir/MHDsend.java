@@ -480,6 +480,8 @@ public class MHDsend extends UtilContext {
 
 				String[] eventCodes = cl.getOptionValues(OPTION_EVENT);
 				for (String eventCodeString : eventCodes) {
+					LOG.info("option {}={}", OPTION_EVENT, eventCodeString);
+
 					if (checkCode(eventCodeString)) {
 						Code eventCode = Code.splitCode(eventCodeString);
 						eventCodeList.add(eventCode);
@@ -527,6 +529,8 @@ public class MHDsend extends UtilContext {
 
 				String[] referenceIdStrings = cl.getOptionValues(OPTION_REFERENCE_ID);
 				for (String referenceIdString : referenceIdStrings) {
+					LOG.info("option {}={}", OPTION_REFERENCE_ID, referenceIdString);
+
 					if (checkReferenceId(referenceIdString)) {
 						Reference reference = createReferenceId(referenceIdString);
 						referenceIdList.add(reference);
