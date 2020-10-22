@@ -4,6 +4,7 @@ import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.client.interceptor.BearerTokenAuthInterceptor;
+import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 
 import org.apache.http.client.utils.URIBuilder;
 import org.hl7.fhir.r4.model.*;
@@ -49,7 +50,7 @@ public class FhirSend extends UtilContext {
 			authInterceptor = new BearerTokenAuthInterceptor(oauthToken);
 			client.registerInterceptor(authInterceptor);
 		}
-		LOG.info("Setting Header");
+		LOG.info("preparing FHIR Bundle...");
 
 		// Setting (Bundle)
 		Bundle bundle = new Bundle();
@@ -85,24 +86,29 @@ public class FhirSend extends UtilContext {
 		Binary binary = createBinary(optionMap);
 		addBinaryToBundle(binary, bundle);
 
-		boolean verbose = (boolean) optionMap.getOrDefault(OPTION_VERBOSE, Boolean.FALSE);
+		try {
+			boolean verbose = (boolean) optionMap.getOrDefault(OPTION_VERBOSE, Boolean.FALSE);
+			if (verbose) {
+				LOG.info("Request=\n{}", fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(bundle));
+			}
 
-		if (verbose) {
-			LOG.info("Request=\n{}", fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(bundle));
-		}
-		Bundle responseBundle = client.transaction().withBundle(bundle).execute();
-		if (verbose) {
-			LOG.info("Response=\n{}", fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(responseBundle));
-		}
+			Bundle responseBundle = client.transaction().withBundle(bundle).execute();
+			if (verbose) {
+				LOG.info("Response=\n{}", fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(responseBundle));
+			}
 
-		boolean bundleIsSuccess = responseBundle.hasEntry();
-		if (bundleIsSuccess) {
-			LOG.info("document provided");
-			System.exit(0);
-		}
-		else {
-			LOG.error("document NOT provided: {}", "reason....");
-			System.exit(99);
+			boolean bundleIsSuccess = responseBundle.hasEntry();
+			if (bundleIsSuccess) {
+				LOG.info("mhdsend completed: document provided");
+				System.exit(0);
+			} else {
+				LOG.error("mhdsend failed: document NOT provided: empty bundle returned");
+				System.exit(99);
+			}
+		} catch(InvalidRequestException e) {
+		//	e.printStackTrace();	// intentionally commented-out
+			LOG.error("mhdsend failed: document NOT provided: {}", e.getMessage());
+			System.exit(98);
 		}
 	}
 
@@ -147,7 +153,7 @@ public class FhirSend extends UtilContext {
 			} else if (patient_sex.equals("M")) {
 				patient.setGender(Enumerations.AdministrativeGender.MALE);
 			} else {
-				LOG.error("Please enter the gender as F or M.");
+				patient.setGender(Enumerations.AdministrativeGender.OTHER);
 			}
 		}
 		if (patient_birthdate != null) {
@@ -203,15 +209,14 @@ public class FhirSend extends UtilContext {
 		LOG.info("DocumentManifest.status={}", manifest.getStatus());
 
 		// type (Required)
-		Code type = (Code) options.get(OPTION_MANIFEST_TYPE);
-		CodeableConcept codeableConcept;
-		codeableConcept = createCodeableConcept(type);
-		manifest.setType(codeableConcept);
-		Coding coding = manifest.getType().getCoding().get(0);
+		Code typeCode = (Code) options.get(OPTION_MANIFEST_TYPE);
+		CodeableConcept typeCC = createCodeableConcept(typeCode);
+		manifest.setType(typeCC);
+		Coding typeCoding = manifest.getType().getCoding().get(0);
 		LOG.info("DocumentManifest.type={},{},{}",
-			coding.getCode(),
-			coding.getDisplay(),
-			coding.getSystem());
+			typeCoding.getCode(),
+			typeCoding.getDisplay(),
+			typeCoding.getSystem());
 
 		// subject (Required)
 		Reference subjectReference = new Reference();
@@ -220,13 +225,11 @@ public class FhirSend extends UtilContext {
 		LOG.info("DocumentManifest.subject={}", manifest.getSubject().getReference());
 
 		// created
-		Date date = (Date) options.get(OPTION_MANIFEST_CREATED);
-		if (date != null) {
-			manifest.setCreated(date);
-		} else{
-			manifest.setCreated(new Date());
+		Date manifestCreatedDate = (Date) options.get(OPTION_MANIFEST_CREATED);
+		if (manifestCreatedDate != null) {
+			manifest.setCreated(manifestCreatedDate);
 		}
-		LOG.info("DocumentManifest.created={}", manifest.getCreated().toString());
+		LOG.info("DocumentManifest.created={}", manifest.getCreated());
 
 		// source
 		manifest.setSource((String) options.get(OPTION_SOURCE));
@@ -237,9 +240,9 @@ public class FhirSend extends UtilContext {
 		LOG.info("DocumentManifest.description={}", manifest.getDescription());
 
 		// content
-		List<Reference> references = new ArrayList<>();
-		references.add(new Reference((String) options.get(OPTION_DOCUMENT_UUID)));
-		manifest.setContent(references);
+		List<Reference> referenceList = new ArrayList<>();
+		referenceList.add(new Reference((String) options.get(OPTION_DOCUMENT_UUID)));
+		manifest.setContent(referenceList);
 		LOG.info("DocumentManifest.content={}", manifest.getContent().get(0).getReference());
 
 		return (manifest);
@@ -284,28 +287,27 @@ public class FhirSend extends UtilContext {
 		LOG.info("DocumentReference.status={}", documentReference.getStatus());
 
 		// type (Required)
-		Code type = (Code) options.get(OPTION_TYPE);
-		CodeableConcept codeableConcept;
-		codeableConcept = createCodeableConcept(type);
-		documentReference.setType(codeableConcept);
-		Coding coding = documentReference.getType().getCoding().get(0);
+		Code typeCode = (Code) options.get(OPTION_TYPE);
+		CodeableConcept typeCC = createCodeableConcept(typeCode);
+		documentReference.setType(typeCC);
+		Coding typeCoding = documentReference.getType().getCoding().get(0);
 		LOG.info("DocumentReference.type={},{},{}",
-			coding.getCode(),
-			coding.getDisplay(),
-			coding.getSystem());
+			typeCoding.getCode(),
+			typeCoding.getDisplay(),
+			typeCoding.getSystem());
 
 		// category (Required)
-		Code category = (Code) options.get(OPTION_CATEGORY);
-		codeableConcept = createCodeableConcept(category);
+		Code categoryCode = (Code) options.get(OPTION_CATEGORY);
+		CodeableConcept categoryCC = createCodeableConcept(categoryCode);
 
-		List<CodeableConcept> codeableConceptList = new ArrayList<>();
-		codeableConceptList.add(codeableConcept);
-		documentReference.setCategory(codeableConceptList);
-		coding = documentReference.getCategory().get(0).getCoding().get(0);
+		List<CodeableConcept> categoryCCList = new ArrayList<>();
+		categoryCCList.add(categoryCC);
+		documentReference.setCategory(categoryCCList);
+		Coding categoryCoding = documentReference.getCategory().get(0).getCoding().get(0);
 		LOG.info("DocumentReference.category={},{},{}",
-			coding.getCode(),
-			coding.getDisplay(),
-			coding.getSystem());
+			categoryCoding.getCode(),
+			categoryCoding.getDisplay(),
+			categoryCoding.getSystem());
 
 		// subject (Required)
 		Reference subjectReference = new Reference();
@@ -314,11 +316,9 @@ public class FhirSend extends UtilContext {
 		LOG.info("DocumentReference.subject={}", documentReference.getSubject().getReference());
 
 		// created
-		Date date = (Date) options.get(OPTION_DOCUMENT_CREATED);
-		if (date != null) {
-			documentReference.setDate(date);
-		} else{
-			documentReference.setDate(new Date());
+		Date documentCreatedDate = (Date) options.get(OPTION_DOCUMENT_CREATED);
+		if (documentCreatedDate != null) {
+			documentReference.setDate(documentCreatedDate);
 		}
 		LOG.info("DocumentReference.date={}", documentReference.getDate());
 
@@ -341,8 +341,8 @@ public class FhirSend extends UtilContext {
 		attachment.setLanguage(language);
 		LOG.info("DocumentReference.attachment.language={}", attachment.getLanguage());
 
-		if (date != null) {
-			attachment.setCreation(date);
+		if (documentCreatedDate != null) {
+			attachment.setCreation(documentCreatedDate);
 			LOG.info("DocumentReference.attachment.creation={}", attachment.getCreation());
 		}
 
@@ -354,65 +354,70 @@ public class FhirSend extends UtilContext {
 		DocumentReference.DocumentReferenceContextComponent documentReferenceContext = new DocumentReference.DocumentReferenceContextComponent();
 
 		@SuppressWarnings("unchecked")
-		List<Code> eventList = (List<Code>) options.get(OPTION_EVENT);
-		codeableConceptList = new ArrayList<>();
-		for (Code event : eventList) {
-			if (event.codeSystem != null) {
-				codeableConcept = createCodeableConcept(event);
-				codeableConceptList.add(codeableConcept);
+		List<Code> eventCodeList = (List<Code>) options.get(OPTION_EVENT);
+		if (eventCodeList != null) {
+			List<CodeableConcept> eventCCList = new ArrayList<>();
+			for (Code eventCode : eventCodeList) {
+				if (eventCode.codeSystem != null) {
+					CodeableConcept eventCC = createCodeableConcept(eventCode);
+					eventCCList.add(eventCC);
+				}
 			}
-		}
-		documentReferenceContext.setEvent(codeableConceptList);
-
-		Code facility = (Code) options.get(OPTION_FACILITY);
-		if (facility.codeSystem != null) {
-			codeableConcept = createCodeableConcept(facility);
-			documentReferenceContext.setFacilityType(codeableConcept);
+			documentReferenceContext.setEvent(eventCCList);
 		}
 
-		Code practice = (Code) options.get(OPTION_PRACTICE);
-		if (practice.codeSystem != null) {
-			codeableConcept = createCodeableConcept(practice);
-			documentReferenceContext.setPracticeSetting(codeableConcept);
+		Code facilityCode = (Code) options.get(OPTION_FACILITY);
+		if (facilityCode != null && facilityCode.codeSystem != null) {
+			CodeableConcept facilityCC = createCodeableConcept(facilityCode);
+			documentReferenceContext.setFacilityType(facilityCC);
 		}
 
-		List<Reference> relatedList;
-		if (options.get(OPTION_REFERENCE_ID) != null) {
-			//noinspection unchecked
-			relatedList = (List<Reference>) options.get(OPTION_REFERENCE_ID);
-			if (!relatedList.isEmpty()) {
-				documentReferenceContext.setRelated(relatedList);
+		Code practiceCode = (Code) options.get(OPTION_PRACTICE);
+		if (practiceCode != null && practiceCode.codeSystem != null) {
+			CodeableConcept practiceCC = createCodeableConcept(practiceCode);
+			documentReferenceContext.setPracticeSetting(practiceCC);
+		}
+
+		@SuppressWarnings("unchecked")
+		List<Reference> referenceIdList = (List<Reference>) options.get(OPTION_REFERENCE_ID);
+		if (referenceIdList != null) {
+			if (!referenceIdList.isEmpty()) {
+				documentReferenceContext.setRelated(referenceIdList);
 			}
 		}
 		if (!documentReferenceContext.isEmpty()) {
 			documentReference.setContext(documentReferenceContext);
+
 			if (!documentReference.getContext().getEvent().isEmpty()) {
-				codeableConceptList = documentReference.getContext().getEvent();
-				for (CodeableConcept event : codeableConceptList) {
-					coding = event.getCoding().get(0);
+				List<CodeableConcept> eventCCList = documentReference.getContext().getEvent();
+				for (CodeableConcept eventCode : eventCCList) {
+					Coding eventCoding = eventCode.getCoding().get(0);
 					LOG.info("DocumentReference.context.event={},{},{}",
-						coding.getCode(),
-						coding.getSystem(),
-						coding.getDisplay());
+						eventCoding.getCode(),
+						eventCoding.getSystem(),
+						eventCoding.getDisplay());
 				}
 			}
+
 			if (!documentReference.getContext().getFacilityType().isEmpty()) {
-				coding = documentReference.getContext().getFacilityType().getCoding().get(0);
+				Coding facilityCoding = documentReference.getContext().getFacilityType().getCoding().get(0);
 				LOG.info("DocumentReference.context.facilityType={},{},{}",
-					coding.getCode(),
-					coding.getSystem(),
-					coding.getDisplay());
+					facilityCoding.getCode(),
+					facilityCoding.getSystem(),
+					facilityCoding.getDisplay());
 			}
+
 			if (!documentReference.getContext().getPracticeSetting().isEmpty()) {
-				coding = documentReference.getContext().getPracticeSetting().getCoding().get(0);
+				Coding practiceCoding = documentReference.getContext().getPracticeSetting().getCoding().get(0);
 				LOG.info("DocumentReference.context.practiceSetting={},{},{}",
-					coding.getCode(),
-					coding.getDisplay(),
-					coding.getSystem());
+					practiceCoding.getCode(),
+					practiceCoding.getDisplay(),
+					practiceCoding.getSystem());
 			}
+
 			if (!documentReference.getContext().getRelated().isEmpty()) {
-				relatedList = documentReference.getContext().getRelated();
-				for (Reference related : relatedList) {
+				referenceIdList = documentReference.getContext().getRelated();
+				for (Reference related : referenceIdList) {
 					LOG.info("DocumentReference.context.related type.code,system,value={},{},{}",
 						related.getIdentifier().getType().getCoding().get(0).getCode(),
 						related.getIdentifier().getSystem(),
@@ -422,25 +427,29 @@ public class FhirSend extends UtilContext {
 		}
 
 		// security label
-		//noinspection unchecked
-		List<Code> securityLabelList = (List<Code>) options.get(OPTION_SECURITY_LABEL);
-		codeableConceptList = new ArrayList<>();
-		for (Code label : securityLabelList) {
-			if (label.codeSystem != null) {
-				codeableConcept = createCodeableConcept(label);
-				codeableConceptList.add(codeableConcept);
+		@SuppressWarnings("unchecked")
+		List<Code> securityLabelCodeList = (List<Code>) options.get(OPTION_SECURITY_LABEL);
+		if (securityLabelCodeList != null) {
+			List<CodeableConcept> securityLabelCCList = new ArrayList<>();
+			for (Code securityLabelCode : securityLabelCodeList) {
+				if (securityLabelCode.codeSystem != null) {
+					CodeableConcept securityLabelCC = createCodeableConcept(securityLabelCode);
+					securityLabelCCList.add(securityLabelCC);
+				}
+			}
+			documentReference.setSecurityLabel(securityLabelCCList);
+
+			if (!documentReference.getSecurityLabel().isEmpty()) {
+				securityLabelCCList = documentReference.getSecurityLabel();
+				for (CodeableConcept securityLabelCC : securityLabelCCList) {
+					LOG.info("DocumentReference.securityLabel={},{},{}",
+						securityLabelCC.getCoding().get(0).getSystem(),
+						securityLabelCC.getCoding().get(0).getCode(),
+						securityLabelCC.getCoding().get(0).getDisplay());
+				}
 			}
 		}
-		documentReference.setSecurityLabel(codeableConceptList);
-		if (!documentReference.getSecurityLabel().isEmpty()) {
-			codeableConceptList = documentReference.getSecurityLabel();
-			for (CodeableConcept securityLabel : codeableConceptList) {
-				LOG.info("DocumentReference.securityLabel={},{},{}",
-					securityLabel.getCoding().get(0).getSystem(),
-					securityLabel.getCoding().get(0).getCode(),
-					securityLabel.getCoding().get(0).getDisplay());
-			}
-		}
+
 		return (documentReference);
 	}
 

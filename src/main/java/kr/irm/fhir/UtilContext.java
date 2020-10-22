@@ -43,6 +43,7 @@ public class UtilContext {
 	public static final String OPTION_CONTENT_TYPE = "content-type";
 	public static final String OPTION_LANGUAGE = "language";
 	public static final String OPTION_DOCUMENT_TITLE = "document-title";
+	public static final String OPTION_DOCUMENT_UID_SEED = "document-uid-seed";
 	public static final String OPTION_EVENT = "event";
 	public static final String OPTION_FACILITY = "facility";
 	public static final String OPTION_PRACTICE = "practice";

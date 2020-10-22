@@ -18,39 +18,19 @@ public class MHDsend extends UtilContext {
 	private static final Logger LOG = LoggerFactory.getLogger(MHDsend.class);
 
 	public static void main(String[] args) {
-		LOG.info("args:{} ", Arrays.toString(args));
+		LOG.info("starting mhdsend...");
+		LOG.info("option args:{} ", Arrays.toString(args));
 		boolean error;
 
-		String server_url;
-		String oauth_token;
 		String timeout = "30";
-		String patient_id;
-		String patient_name;
-		String patient_sex;
-		String patient_birthdate;
 
 		String manifest_uuid = null;
 		String manifest_uid = null;
 		Enumerations.DocumentReferenceStatus manifest_status = Enumerations.DocumentReferenceStatus.CURRENT;
-		Code manifest_type;
-		Date manifest_created = null;
-		String source;
-		String manifest_title;
 
 		String document_uuid = null;
 		String document_uid = null;
 		Enumerations.DocumentReferenceStatus document_status = Enumerations.DocumentReferenceStatus.CURRENT;
-		Code type;
-		Code category;
-		Date document_date = null;
-		List<Code> security_label;
-		String content_type;
-		String language = null;
-		String document_title;
-		List<Code> event;
-		Code facility;
-		Code practice;
-		List<Reference> reference_id_list;
 
 		String binary_uuid = null;
 		File data_binary_file = null;
@@ -76,6 +56,7 @@ public class MHDsend extends UtilContext {
 		opts.addOption(null, OPTION_MANIFEST_STATUS, true, "DocumentManifest.status (default: current)");
 		opts.addOption("m", OPTION_MANIFEST_TYPE, true, "DocumentManifest.type (code^display^system)");
 		opts.addOption(null, OPTION_MANIFEST_CREATED, true, "DocumentManifest.created (yyyymmdd)");
+		opts.addOption(null, OPTION_SOURCE, true, "DocumentManufest.source");
 		opts.addOption(null, OPTION_MANIFEST_TITLE, true, "DocumentManifest.description");
 		opts.addOption(null, OPTION_MANIFEST_UID_SEED, true, "DocumentManifest.masterIdentifier (seed)");
 
@@ -90,6 +71,7 @@ public class MHDsend extends UtilContext {
 		opts.addOption(null, OPTION_CONTENT_TYPE, true, "DocumentReference.content.attachment.contentType (MIME type)");
 		opts.addOption(null, OPTION_LANGUAGE, true, "DocumentReference.content.attachment.language");
 		opts.addOption(null, OPTION_DOCUMENT_TITLE, true, "DocumentReference.content.attachment.title");
+		opts.addOption(null, OPTION_DOCUMENT_UID_SEED, true, "DocumentReference.masterIdentifier (seed)");
 		opts.addOption("e", OPTION_EVENT, true, "DocumentReference.context.event - multiple (code^display^system)");
 		opts.addOption("f", OPTION_FACILITY, true, "DocumentReference.context.facilityType (code^display^system) ");
 		opts.addOption("p", OPTION_PRACTICE, true, "DocumentReference.context.practiceSetting (code^display^system) ");
@@ -97,7 +79,7 @@ public class MHDsend extends UtilContext {
 
 		// Binary
 		opts.addOption(null, OPTION_BINARY_UUID, true, "Binary.id (UUID)");
-		opts.addOption("d", OPTION_DATA_BINARY, true, "Binary.data (filename)");
+		opts.addOption("d", OPTION_DATA_BINARY, true, "Binary.data (filename, max 2GB)");
 
 		CommandLineParser parser = new DefaultParser();
 		try {
@@ -110,21 +92,23 @@ public class MHDsend extends UtilContext {
 				formatter.printHelp(
 					"MHDsend [options]",
 					"\nSend a document to MHD DocumentRecipient", opts,
-					"Examples: $ ./MHDsend --document-status");
+					"Examples: $ ./MHDsend --document-status ...");
 				System.exit(2);
 			}
 
 			// OAuth token (Required)
 			if (cl.hasOption(OPTION_OAUTH_TOKEN)) {
-				oauth_token = cl.getOptionValue(OPTION_OAUTH_TOKEN);
+				String oauth_token = cl.getOptionValue(OPTION_OAUTH_TOKEN);
+				LOG.info("option {}={}", OPTION_OAUTH_TOKEN, oauth_token);
+
 				optionMap.put(OPTION_OAUTH_TOKEN, oauth_token);
-			} else {
-				optionMap.put(OPTION_OAUTH_TOKEN, null);
 			}
 
 			// Server-url (Required)
 			if (cl.hasOption(OPTION_SERVER_URL)) {
-				server_url = cl.getOptionValue(OPTION_SERVER_URL);
+				String server_url = cl.getOptionValue(OPTION_SERVER_URL);
+				LOG.info("option {}={}", OPTION_SERVER_URL, server_url);
+
 				optionMap.put(OPTION_SERVER_URL, server_url);
 			} else {
 				error = true;
@@ -134,13 +118,15 @@ public class MHDsend extends UtilContext {
 			// timeout
 			if (cl.hasOption(OPTION_TIMEOUT)) {
 				timeout = cl.getOptionValue(OPTION_TIMEOUT);
+				LOG.info("option {}={}", OPTION_TIMEOUT, timeout);
 			}
 			optionMap.put("timeout", timeout);
 
 			// patient-id (Required)
 			if (cl.hasOption(OPTION_PATIENT_ID)) {
-				LOG.info("patient-id={}", cl.getOptionValue(OPTION_PATIENT_ID));
-				patient_id = cl.getOptionValue(OPTION_PATIENT_ID);
+				String patient_id = cl.getOptionValue(OPTION_PATIENT_ID);
+				LOG.info("option {}={}", OPTION_PATIENT_ID, patient_id);
+
 				optionMap.put(OPTION_PATIENT_ID, patient_id);
 			} else {
 				error = true;
@@ -149,33 +135,31 @@ public class MHDsend extends UtilContext {
 
 			// patient-name
 			if (cl.hasOption(OPTION_PATIENT_NANE)) {
-				LOG.info("patient-name={}", cl.getOptionValue(OPTION_PATIENT_NANE));
-				patient_name = cl.getOptionValue(OPTION_PATIENT_NANE);
+				String patient_name = cl.getOptionValue(OPTION_PATIENT_NANE);
+				LOG.info("option {}={}", OPTION_PATIENT_NANE, patient_name);
+
 				optionMap.put(OPTION_PATIENT_NANE, patient_name);
-			} else {
-				optionMap.put(OPTION_PATIENT_NANE, null);
 			}
 
 			// patient-sex
 			if (cl.hasOption(OPTION_PATIENT_SEX)) {
-				LOG.info("patient-sex={}", cl.getOptionValue(OPTION_PATIENT_SEX));
-				patient_sex = cl.getOptionValue(OPTION_PATIENT_SEX);
+				String patient_sex = cl.getOptionValue(OPTION_PATIENT_SEX);
+				LOG.info("option {}={}", OPTION_PATIENT_SEX, patient_sex);
+
 				optionMap.put(OPTION_PATIENT_SEX, patient_sex);
-			} else {
-				optionMap.put(OPTION_PATIENT_SEX, null);
 			}
 
 			// patient-birthdate
 			if (cl.hasOption(OPTION_PATIENT_BIRTHDATE)) {
-				LOG.info("patient-birthdate={}", cl.getOptionValue(OPTION_PATIENT_BIRTHDATE));
-				patient_birthdate = cl.getOptionValue(OPTION_PATIENT_BIRTHDATE);
+				String patient_birthdate = cl.getOptionValue(OPTION_PATIENT_BIRTHDATE);
+				LOG.info("option {}={}", OPTION_PATIENT_BIRTHDATE, patient_birthdate);
+
 				optionMap.put(OPTION_PATIENT_BIRTHDATE, patient_birthdate);
-			} else {
-				optionMap.put(OPTION_PATIENT_BIRTHDATE, null);
 			}
 
 			// Verbose
 			if (cl.hasOption(OPTION_VERBOSE)) {
+				LOG.info("option {}={}", OPTION_VERBOSE, true);
 				optionMap.put(OPTION_VERBOSE, Boolean.TRUE);
 			} else {
 				optionMap.put(OPTION_VERBOSE, Boolean.FALSE);
@@ -187,31 +171,34 @@ public class MHDsend extends UtilContext {
 			// binary-uuid
 			if (cl.hasOption(OPTION_BINARY_UUID)) {
 				String tmpUUID = cl.getOptionValue(OPTION_BINARY_UUID);
+				LOG.info("option {}={}", OPTION_BINARY_UUID, tmpUUID);
+
 				if (checkUUID(tmpUUID)) {
-					if (!tmpUUID.startsWith(UUID_Prefix)) {
-						binary_uuid = UUID_Prefix + tmpUUID;
-					} else {
+					if (tmpUUID.startsWith(UUID_Prefix)) {
 						binary_uuid = tmpUUID;
+					} else {
+						binary_uuid = UUID_Prefix + tmpUUID;
 					}
-					optionMap.put(OPTION_BINARY_UUID, binary_uuid);
 				} else {
 					error = true;
-					LOG.error("format does not match: {}", OPTION_BINARY_UUID);
+					LOG.error("{} NOT valid: {}", OPTION_BINARY_UUID, tmpUUID);
 				}
 			} else {
 				binary_uuid = newUUID();
-				optionMap.put(OPTION_BINARY_UUID, binary_uuid);
 			}
+			optionMap.put(OPTION_BINARY_UUID, binary_uuid);
 
 			// data-binary
 			if (cl.hasOption(OPTION_DATA_BINARY)) {
 				String dataPath = cl.getOptionValue(OPTION_DATA_BINARY);
+				LOG.info("option {}={}", OPTION_DATA_BINARY, dataPath);
+
 				data_binary_file = new File(dataPath);
 				if (data_binary_file.exists() && data_binary_file.canRead()) {
 					optionMap.put(OPTION_DATA_BINARY, data_binary_file);
 				} else {
-					LOG.error("file NOT found: filename={}", data_binary_file);
 					error = true;
+					LOG.error("file NOT found: {}", data_binary_file);
 				}
 			} else {
 				error = true;
@@ -224,63 +211,69 @@ public class MHDsend extends UtilContext {
 			// manifest-uuid (Required)
 			if (cl.hasOption(OPTION_MANIFEST_UUID)) {
 				String tmpUUID = cl.getOptionValue(OPTION_MANIFEST_UUID);
+				LOG.info("option {}={}", OPTION_MANIFEST_UUID, tmpUUID);
+
 				if (checkUUID(tmpUUID))  {
-					if (!tmpUUID.startsWith(UUID_Prefix)) {
-						manifest_uuid = UUID_Prefix + tmpUUID;
-					} else {
+					if (tmpUUID.startsWith(UUID_Prefix)) {
 						manifest_uuid = tmpUUID;
+					} else {
+						manifest_uuid = UUID_Prefix + tmpUUID;
 					}
-					optionMap.put(OPTION_MANIFEST_UUID, manifest_uuid);
 				} else{
 					error = true;
-					LOG.error("format does not match: {}", OPTION_MANIFEST_UUID);
+					LOG.error("{} NOT valid: {}", OPTION_MANIFEST_UUID, tmpUUID);
 				}
 			} else {
 				manifest_uuid = newUUID();
-				optionMap.put(OPTION_MANIFEST_UUID, manifest_uuid);
 			}
+			optionMap.put(OPTION_MANIFEST_UUID, manifest_uuid);
 
 			// manifest-uid (Required)
 			if (cl.hasOption(OPTION_MANIFEST_UID)) {
 				String tmpOID = cl.getOptionValue(OPTION_MANIFEST_UID);
+				LOG.info("option {}={}", OPTION_MANIFEST_UID, tmpOID);
+
 				if (checkOID(tmpOID)) {
 					if (tmpOID.startsWith(OID_Prefix)) {
 						manifest_uid = tmpOID;
 					} else {
 						manifest_uid = OID_Prefix + tmpOID;
 					}
-					optionMap.put(OPTION_MANIFEST_UID, manifest_uid);
 				} else {
 					error = true;
-					LOG.error("format does not match: {}", OPTION_MANIFEST_UID);
+					LOG.error("{} NOT valid: {}", OPTION_MANIFEST_UID, tmpOID);
 				}
+			} else if (cl.hasOption(OPTION_MANIFEST_UID_SEED)) {
+				String manifest_uid_seed = cl.getOptionValue(OPTION_MANIFEST_UID_SEED);
+				LOG.info("option {}={}", OPTION_MANIFEST_UID_SEED, manifest_uid_seed);
+
+				manifest_uid = newOIDbyString(manifest_uid_seed);
+				LOG.info("manifest-uid generated: seed={}, uid={}", manifest_uid_seed, manifest_uid);
 			} else {
-				if (cl.hasOption(OPTION_MANIFEST_UID_SEED)) {
-					manifest_uid = newOIDbyString(OPTION_MANIFEST_UID_SEED);
-					LOG.info("manifestGetOid={}", manifest_uid);
-				} else {
-					manifest_uid = newOID();
-				}
-				optionMap.put(OPTION_MANIFEST_UID, manifest_uid);
+				manifest_uid = newOID();
 			}
+			optionMap.put(OPTION_MANIFEST_UID, manifest_uid);
 
 			// manifest-status
 			if (cl.hasOption(OPTION_MANIFEST_STATUS)) {
 				String tmpStatus = cl.getOptionValue(OPTION_MANIFEST_STATUS);
+				LOG.info("option {}={}", OPTION_MANIFEST_STATUS, tmpStatus);
+
 				manifest_status = Enumerations.DocumentReferenceStatus.fromCode(tmpStatus);
 			}
 			optionMap.put(OPTION_MANIFEST_STATUS, manifest_status);
 
 			// manifest-type (Required)
-			Code code;
 			if (cl.hasOption(OPTION_MANIFEST_TYPE)) {
-				if (checkCode(cl.getOptionValue(OPTION_MANIFEST_TYPE))) {
-					code = Code.splitCode(cl.getOptionValue(OPTION_MANIFEST_TYPE));
-					manifest_type = code;
-					optionMap.put(OPTION_MANIFEST_TYPE, manifest_type);
+				String typeCodeValue = cl.getOptionValue(OPTION_MANIFEST_TYPE);
+				LOG.info("option {}={}", OPTION_MANIFEST_TYPE, typeCodeValue);
+
+				if (checkCode(typeCodeValue)) {
+					Code manifest_type_code = Code.splitCode(typeCodeValue);
+					optionMap.put(OPTION_MANIFEST_TYPE, manifest_type_code);
 				} else {
 					error = true;
-					LOG.error("format does not match: {}", OPTION_MANIFEST_TYPE);
+					LOG.error("{} NOT valid: {}", OPTION_MANIFEST_TYPE, typeCodeValue);
 				}
 			} else {
 				error = true;
@@ -288,26 +281,38 @@ public class MHDsend extends UtilContext {
 			}
 
 			// manifest-created
-			String date;
 			if (cl.hasOption(OPTION_MANIFEST_CREATED)) {
-				date = cl.getOptionValue(OPTION_MANIFEST_CREATED);
-				if ((manifest_created = checkDate(date) )!= null) {
+				String manifest_created_string = cl.getOptionValue(OPTION_MANIFEST_CREATED);
+				LOG.info("option {}={}", OPTION_MANIFEST_CREATED, manifest_created_string);
+
+				Date manifest_created = checkDate(manifest_created_string);
+				if (manifest_created != null) {
 					optionMap.put(OPTION_MANIFEST_CREATED, manifest_created);
 				} else {
 					error = true;
-					LOG.error("format doees not match: {}", OPTION_MANIFEST_CREATED);
+					LOG.error("{} NOT valid: {}", OPTION_MANIFEST_CREATED, manifest_created_string);
 				}
 			} else {
-				optionMap.put(OPTION_MANIFEST_CREATED, manifest_created);
+				error = true;
+				LOG.error("option required: {}", OPTION_MANIFEST_CREATED);
 			}
 
 			// source
-			source = newOID();
-			optionMap.put(OPTION_SOURCE, source);
+			if (cl.hasOption(OPTION_SOURCE)) {
+				String source = cl.getOptionValue(OPTION_SOURCE);
+				LOG.info("option {}={}", OPTION_SOURCE, source);
+
+				optionMap.put(OPTION_SOURCE, source);
+			} else {
+				error = true;
+				LOG.error("option required: {}", OPTION_SOURCE);
+			}
 
 			// manifest-title (Required)
 			if (cl.hasOption(OPTION_MANIFEST_TITLE)) {
-				manifest_title = cl.getOptionValue(OPTION_MANIFEST_TITLE);
+				String manifest_title = cl.getOptionValue(OPTION_MANIFEST_TITLE);
+				LOG.info("option {}={}", OPTION_MANIFEST_TITLE, manifest_title);
+
 				optionMap.put(OPTION_MANIFEST_TITLE, manifest_title);
 			} else {
 				error = true;
@@ -320,60 +325,69 @@ public class MHDsend extends UtilContext {
 			// document-uuid (Required)
 			if (cl.hasOption(OPTION_DOCUMENT_UUID)) {
 				String tmpUUID = cl.getOptionValue(OPTION_DOCUMENT_UUID);
+				LOG.info("option {}={}", OPTION_DOCUMENT_UUID, tmpUUID);
+
 				if (checkUUID(tmpUUID)) {
-					if (!tmpUUID.startsWith(UUID_Prefix)) {
-						document_uuid = UUID_Prefix + tmpUUID;
-					} else {
+					if (tmpUUID.startsWith(UUID_Prefix)) {
 						document_uuid = tmpUUID;
+					} else {
+						document_uuid = UUID_Prefix + tmpUUID;
 					}
-					optionMap.put(OPTION_DOCUMENT_UUID, document_uuid);
 				} else {
 					error = true;
-					LOG.error("format does not match: {}", OPTION_DOCUMENT_UUID);
+					LOG.error("{} NOT valid: {}", OPTION_DOCUMENT_UUID, tmpUUID);
 				}
 			} else {
 				document_uuid = newUUID();
-				optionMap.put(OPTION_DOCUMENT_UUID, document_uuid);
 			}
+			optionMap.put(OPTION_DOCUMENT_UUID, document_uuid);
 
 			// document-uid (Required)
 			if (cl.hasOption(OPTION_DOCUMENT_UID)) {
 				String tmpOID = cl.getOptionValue(OPTION_DOCUMENT_UID);
-				LOG.info("tmpOID :{}", tmpOID);
+				LOG.info("option {}={}", OPTION_DOCUMENT_UID, tmpOID);
+
 				if (checkOID(tmpOID)) {
 					if (tmpOID.startsWith(OID_Prefix)) {
 						document_uid = tmpOID;
 					} else {
 						document_uid = OID_Prefix + tmpOID;
 					}
-					optionMap.put(OPTION_DOCUMENT_UID, document_uid);
 				} else {
 					error = true;
 					LOG.error("format does not match: {}", OPTION_MANIFEST_TYPE);
 				}
+			} else if (cl.hasOption(OPTION_DOCUMENT_UID_SEED)) {
+				String document_uid_seed = cl.getOptionValue(OPTION_DOCUMENT_UID_SEED);
+				LOG.info("option {}={}", OPTION_DOCUMENT_UID_SEED, document_uid_seed);
+
+				document_uid = newOIDbyString(document_uid_seed);
+				LOG.info("document-uid generated: seed={}, uid={}", document_uid_seed, manifest_uid);
 			} else {
 				document_uid = newOID();
-				optionMap.put(OPTION_DOCUMENT_UID, document_uid);
-				LOG.info("document_uid={}", document_uid);
 			}
+			optionMap.put(OPTION_DOCUMENT_UID, document_uid);
 
 			// document-status
 			if (cl.hasOption(OPTION_DOCUMENT_STATUS)) {
 				String tmpStatus = cl.getOptionValue(OPTION_DOCUMENT_STATUS);
+				LOG.info("option {}={}", OPTION_DOCUMENT_STATUS, tmpStatus);
+
 				document_status = Enumerations.DocumentReferenceStatus.fromCode(tmpStatus);
 			}
 			optionMap.put(OPTION_DOCUMENT_STATUS, document_status);
 
-
 			// type (Required)
 			if (cl.hasOption(OPTION_TYPE)) {
-				if (checkCode(cl.getOptionValue(OPTION_TYPE))) {
-					code = Code.splitCode(cl.getOptionValue(OPTION_TYPE));
-					type = code;
-					optionMap.put(OPTION_TYPE, type);
+				String typeCodeValue = cl.getOptionValue(OPTION_TYPE);
+				LOG.info("option {}={}", OPTION_TYPE, typeCodeValue);
+
+				if (checkCode(typeCodeValue)) {
+					Code typeCode = Code.splitCode(cl.getOptionValue(OPTION_TYPE));
+					optionMap.put(OPTION_TYPE, typeCode);
 				} else {
 					error = true;
-					LOG.error("format does not match: {}", OPTION_TYPE);
+					LOG.error("{} NOT valid: {}", OPTION_TYPE, typeCodeValue);
 				}
 			} else {
 				error = true;
@@ -382,13 +396,15 @@ public class MHDsend extends UtilContext {
 
 			// category (Required)
 			if (cl.hasOption(OPTION_CATEGORY)) {
+				String categoryCodeValue = cl.getOptionValue(OPTION_TYPE);
+				LOG.info("option {}={}", OPTION_CATEGORY, categoryCodeValue);
+
 				if (checkCode(cl.getOptionValue(OPTION_CATEGORY))) {
-					code = Code.splitCode(cl.getOptionValue(OPTION_CATEGORY));
-					category = code;
-					optionMap.put(OPTION_CATEGORY, category);
+					Code catecoryCode = Code.splitCode(categoryCodeValue);
+					optionMap.put(OPTION_CATEGORY, catecoryCode);
 				} else {
 					error = true;
-					LOG.error("format does not match: {}", OPTION_CATEGORY);
+					LOG.error("{} NOT valid: {}", OPTION_CATEGORY, categoryCodeValue);
 				}
 			} else {
 				error = true;
@@ -397,41 +413,43 @@ public class MHDsend extends UtilContext {
 
 			// document-date
 			if (cl.hasOption(OPTION_DOCUMENT_CREATED)) {
-				date = cl.getOptionValue(OPTION_DOCUMENT_CREATED);
-				if ((document_date = checkDate(date)) != null) {
-					optionMap.put(OPTION_DOCUMENT_CREATED, document_date);
+				String document_created_string = cl.getOptionValue(OPTION_DOCUMENT_CREATED);
+				LOG.info("option {}={}", OPTION_DOCUMENT_CREATED, document_created_string);
+
+				Date document_created = checkDate(document_created_string);
+				if (document_created != null) {
+					optionMap.put(OPTION_DOCUMENT_CREATED, document_created);
 				} else {
 					error = true;
-					LOG.error("format doees not match: {}", OPTION_DOCUMENT_CREATED);
+					LOG.error("{} NOT valid: {}", OPTION_DOCUMENT_CREATED, document_created_string);
 				}
-			} else {
-				optionMap.put(OPTION_DOCUMENT_CREATED, document_date);
 			}
 
 			// security-label
-			security_label = new ArrayList<>();
 			if (cl.hasOption(OPTION_SECURITY_LABEL)) {
-				String[] securityLabelArr = cl.getOptionValues(OPTION_SECURITY_LABEL);
-				for (String tmpLabel : securityLabelArr) {
-					if (checkCode(tmpLabel)) {
-						code = Code.splitCode(tmpLabel);
-						security_label.add(code);
-						optionMap.put(OPTION_SECURITY_LABEL, security_label);
+				List<Code> securityLabelCodeList = new ArrayList<>();
+
+				String[] securityLabels = cl.getOptionValues(OPTION_SECURITY_LABEL);
+				for (String securityLabelString : securityLabels) {
+					LOG.info("option {}={}", OPTION_SECURITY_LABEL, securityLabelString);
+
+					if (checkCode(securityLabelString)) {
+						Code securityLabelCode = Code.splitCode(securityLabelString);
+						securityLabelCodeList.add(securityLabelCode);
 					} else {
 						error = true;
-						LOG.error("format does not match: {}", OPTION_SECURITY_LABEL);
+						LOG.error("{} NOT valid: {}", OPTION_SECURITY_LABEL, securityLabelString);
 						break;
 					}
 				}
-			} else {
-				code = new Code(null, null, null);
-				security_label.add(code);
-				optionMap.put(OPTION_SECURITY_LABEL, security_label);
+
+				optionMap.put(OPTION_SECURITY_LABEL, securityLabelCodeList);
 			}
 
 			// content-type
 			if (cl.hasOption(OPTION_CONTENT_TYPE)) {
-				content_type = cl.getOptionValue(OPTION_CONTENT_TYPE);
+				String content_type = cl.getOptionValue(OPTION_CONTENT_TYPE);
+				LOG.info("option {}={}", OPTION_CONTENT_TYPE, content_type);
 				optionMap.put(OPTION_CONTENT_TYPE, content_type);
 			} else {
 				error = true;
@@ -440,92 +458,89 @@ public class MHDsend extends UtilContext {
 
 			// language
 			if (cl.hasOption(OPTION_LANGUAGE)) {
-				language = cl.getOptionValue(OPTION_LANGUAGE);
+				String language = cl.getOptionValue(OPTION_LANGUAGE);
+				LOG.info("option {}={}", OPTION_LANGUAGE, language);
+
+				optionMap.put(OPTION_LANGUAGE, language);
 			}
-			optionMap.put(OPTION_LANGUAGE, language);
 
 			// document-title
 			if (cl.hasOption(OPTION_DOCUMENT_TITLE)) {
-				document_title = cl.getOptionValue(OPTION_DOCUMENT_TITLE);
+				String document_title = cl.getOptionValue(OPTION_DOCUMENT_TITLE);
+				LOG.info("option {}={}", OPTION_DOCUMENT_TITLE, document_title);
+
 				optionMap.put(OPTION_DOCUMENT_TITLE, document_title);
 			} else if (data_binary_file != null) {
-				document_title = data_binary_file.getName();
-				optionMap.put(OPTION_DOCUMENT_TITLE, document_title);
+				optionMap.put(OPTION_DOCUMENT_TITLE, data_binary_file.getName());
 			}
 
 			// event
-			event = new ArrayList<>();
 			if (cl.hasOption(OPTION_EVENT)) {
-				String[] eventArr = cl.getOptionValues(OPTION_EVENT);
-				for (String tmpEvent : eventArr) {
-					if (checkCode(tmpEvent)) {
-						code = Code.splitCode(tmpEvent);
-						event.add(code);
-						optionMap.put(OPTION_EVENT, event);
+				List<Code> eventCodeList = new ArrayList<>();
+
+				String[] eventCodes = cl.getOptionValues(OPTION_EVENT);
+				for (String eventCodeString : eventCodes) {
+					if (checkCode(eventCodeString)) {
+						Code eventCode = Code.splitCode(eventCodeString);
+						eventCodeList.add(eventCode);
 					} else {
 						error = true;
-						LOG.error("format does not match: {}", OPTION_EVENT);
+						LOG.error("{} NOT valid: {}", OPTION_EVENT, eventCodeString);
 						break;
 					}
 				}
-			} else {
-				code = new Code(null, null, null);
-				event.add(code);
-				optionMap.put(OPTION_EVENT, event);
+
+				optionMap.put(OPTION_EVENT, eventCodeList);
 			}
 
 			// facility
 			if (cl.hasOption(OPTION_FACILITY)) {
+				String facility_code_string = cl.getOptionValue(OPTION_FACILITY);
+				LOG.info("option {}={}", OPTION_FACILITY, facility_code_string);
+
 				if (checkCode(cl.getOptionValue(OPTION_FACILITY))) {
-					code = Code.splitCode(cl.getOptionValue(OPTION_FACILITY));
-					facility = code;
-					optionMap.put(OPTION_FACILITY, facility);
+					Code facilityCode = Code.splitCode(facility_code_string);
+					optionMap.put(OPTION_FACILITY, facilityCode);
 				} else {
 					error = true;
-					LOG.error("format does not match: {}", OPTION_FACILITY);
+					LOG.error("{} NOT valid: {}", OPTION_FACILITY, facility_code_string);
 				}
-			} else {
-				code = new Code(null, null, null);
-				facility = code;
-				optionMap.put(OPTION_FACILITY, facility);
 			}
 
 			// practice
 			if (cl.hasOption(OPTION_PRACTICE)) {
+				String practice_code_string = cl.getOptionValue(OPTION_PRACTICE);
+				LOG.info("option {}={}", OPTION_PRACTICE, practice_code_string);
+
 				if (checkCode(cl.getOptionValue(OPTION_PRACTICE))) {
-					code = Code.splitCode(cl.getOptionValue(OPTION_PRACTICE));
-					practice = code;
-					optionMap.put(OPTION_PRACTICE, practice);
+					Code practiceCode = Code.splitCode(practice_code_string);
+					optionMap.put(OPTION_PRACTICE, practiceCode);
 				} else {
 					error = true;
-					LOG.error("format does not match: {}", OPTION_PRACTICE);
+					LOG.error("{} NOT valid: {}", OPTION_PRACTICE, practice_code_string);
 				}
-			} else {
-				code = new Code(null, null, null);
-				practice = code;
-				optionMap.put(OPTION_PRACTICE, practice);
 			}
 
 			// reference-id (related)
-			reference_id_list = new ArrayList<>();
 			if (cl.hasOption(OPTION_REFERENCE_ID)) {
-				String[] referenceArr = cl.getOptionValues(OPTION_REFERENCE_ID);
-				for (String referenceId : referenceArr) {
-					Reference reference;
-					if (checkReferenceId(referenceId)) {
-						reference = createReferenceId(referenceId);
-						reference_id_list.add(reference);
-						optionMap.put(OPTION_REFERENCE_ID, reference_id_list);
+				List<Reference> referenceIdList = new ArrayList<>();
+
+				String[] referenceIdStrings = cl.getOptionValues(OPTION_REFERENCE_ID);
+				for (String referenceIdString : referenceIdStrings) {
+					if (checkReferenceId(referenceIdString)) {
+						Reference reference = createReferenceId(referenceIdString);
+						referenceIdList.add(reference);
 					} else {
 						error = true;
-						LOG.error("format does not match: {}", OPTION_REFERENCE_ID);
+						LOG.error("{} NOT valid: {}", OPTION_REFERENCE_ID, referenceIdString);
 					}
 				}
-			} else {
-				optionMap.put(OPTION_REFERENCE_ID, null);
+
+				optionMap.put(OPTION_REFERENCE_ID, referenceIdList);
 			}
 
 			if (error) {
+				LOG.error("mhdsend failed: invalid options");
 				System.exit(1);
 			}
 
@@ -537,8 +552,6 @@ public class MHDsend extends UtilContext {
 			e.printStackTrace();
 		}
 	}
-
-
 
 	private static String newOIDbyString(String uidSeed) {
 		BigInteger bi = null;
