@@ -346,13 +346,28 @@ public class FhirSend extends UtilContext {
 			LOG.info("DocumentReference.attachment.creation={}", attachment.getCreation());
 		}
 
+		// format
+		Code formatCode = (Code) options.get(OPTION_FORMAT);
+		if (formatCode != null) {
+			CodeableConcept formatCC = createCodeableConcept(formatCode);
+			documentReference.setType(formatCC);
+			Coding formatCoding = documentReference.getType().getCoding().get(0);
+			LOG.info("DocumentReference.content.format={},{},{}",
+				formatCoding.getCode(),
+				formatCoding.getDisplay(),
+				formatCoding.getSystem());
+
+		}
+
 		List<DocumentReference.DocumentReferenceContentComponent> documentReferenceContentList = new ArrayList<>();
 		documentReferenceContentList.add(new DocumentReference.DocumentReferenceContentComponent().setAttachment(attachment));
 		documentReference.setContent(documentReferenceContentList);
 
+
 		// context (Optional)
 		DocumentReference.DocumentReferenceContextComponent documentReferenceContext = new DocumentReference.DocumentReferenceContextComponent();
 
+		// event
 		@SuppressWarnings("unchecked")
 		List<Code> eventCodeList = (List<Code>) options.get(OPTION_EVENT);
 		if (eventCodeList != null) {
@@ -366,12 +381,29 @@ public class FhirSend extends UtilContext {
 			documentReferenceContext.setEvent(eventCCList);
 		}
 
+		// period-start
+		Date periodStart = (Date) options.get(OPTION_PERIOD_START);
+		Period period = new Period();
+		if (periodStart != null) {
+			documentReferenceContext.setPeriod(period.setStart(periodStart));
+			LOG.info("DocumentReference.context.period start={}", period.getStart());
+		}
+
+		// period-end
+		Date periodEnd = (Date) options.get(OPTION_PERIOD_STOP);
+		if (periodEnd != null) {
+			documentReferenceContext.setPeriod(period.setEnd(periodEnd));
+			LOG.info("DocumentReference.context.period end={}", period.getEnd());
+		}
+
+		// facility
 		Code facilityCode = (Code) options.get(OPTION_FACILITY);
 		if (facilityCode != null && facilityCode.codeSystem != null) {
 			CodeableConcept facilityCC = createCodeableConcept(facilityCode);
 			documentReferenceContext.setFacilityType(facilityCC);
 		}
 
+		// practice
 		Code practiceCode = (Code) options.get(OPTION_PRACTICE);
 		if (practiceCode != null && practiceCode.codeSystem != null) {
 			CodeableConcept practiceCC = createCodeableConcept(practiceCode);

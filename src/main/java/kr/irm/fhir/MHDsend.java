@@ -55,8 +55,8 @@ public class MHDsend extends UtilContext {
 		opts.addOption(null, OPTION_MANIFEST_UID, true, "DocumentManifest.masterIdentifier (UID)");
 		opts.addOption(null, OPTION_MANIFEST_STATUS, true, "DocumentManifest.status (default: current)");
 		opts.addOption("m", OPTION_MANIFEST_TYPE, true, "DocumentManifest.type (code^display^system)");
-		opts.addOption(null, OPTION_MANIFEST_CREATED, true, "DocumentManifest.created (yyyymmdd)");
-		opts.addOption(null, OPTION_SOURCE, true, "DocumentManufest.source");
+		opts.addOption(null, OPTION_MANIFEST_CREATED, true, "DocumentManifest.created (yyyyMMdd)");
+		opts.addOption(null, OPTION_SOURCE, true, "DocumentManifest.source");
 		opts.addOption(null, OPTION_MANIFEST_TITLE, true, "DocumentManifest.description");
 		opts.addOption(null, OPTION_MANIFEST_UID_SEED, true, "DocumentManifest.masterIdentifier (seed)");
 
@@ -66,13 +66,17 @@ public class MHDsend extends UtilContext {
 		opts.addOption(null, OPTION_DOCUMENT_STATUS, true, "DocumentReference.status (default: current)");
 		opts.addOption("t", OPTION_TYPE, true, "DocumentReference.type (code^display^system)");
 		opts.addOption("c", OPTION_CATEGORY, true, "DocumentReference.category (code^display^system)");
-		opts.addOption(null, OPTION_DOCUMENT_CREATED, true, "DocumentReference.content.attachment.creation (yyyymmdd)");
+		opts.addOption(null, OPTION_DOCUMENT_CREATED, true, "DocumentReference.content.attachment.creation (yyyyMMdd)");
 		opts.addOption("l", OPTION_SECURITY_LABEL, true, "DocumentReference.securityLabel - multiple (code^display^system)");
 		opts.addOption(null, OPTION_CONTENT_TYPE, true, "DocumentReference.content.attachment.contentType (MIME type)");
 		opts.addOption(null, OPTION_LANGUAGE, true, "DocumentReference.content.attachment.language");
 		opts.addOption(null, OPTION_DOCUMENT_TITLE, true, "DocumentReference.content.attachment.title");
+		opts.addOption(null, OPTION_FORMAT, true, "DocumentReference.content.format");
+
 		opts.addOption(null, OPTION_DOCUMENT_UID_SEED, true, "DocumentReference.masterIdentifier (seed)");
 		opts.addOption("e", OPTION_EVENT, true, "DocumentReference.context.event - multiple (code^display^system)");
+		opts.addOption(null, OPTION_PERIOD_START, true, "DocumentReference.context.period start (yyyyMMdd)");
+		opts.addOption(null, OPTION_PERIOD_STOP, true, "DocumentReference.context.period end (yyyyMMdd)");
 		opts.addOption("f", OPTION_FACILITY, true, "DocumentReference.context.facilityType (code^display^system) ");
 		opts.addOption("p", OPTION_PRACTICE, true, "DocumentReference.context.practiceSetting (code^display^system) ");
 		opts.addOption("r", OPTION_REFERENCE_ID, true, "DocumentReference.context.related - multiple (idValue^^^&assignerId&ISO^idType)");
@@ -213,16 +217,21 @@ public class MHDsend extends UtilContext {
 				String tmpUUID = cl.getOptionValue(OPTION_MANIFEST_UUID);
 				LOG.info("option {}={}", OPTION_MANIFEST_UUID, tmpUUID);
 
-				if (checkUUID(tmpUUID))  {
+				if (checkUUID(tmpUUID)) {
 					if (tmpUUID.startsWith(UUID_Prefix)) {
 						manifest_uuid = tmpUUID;
 					} else {
 						manifest_uuid = UUID_Prefix + tmpUUID;
 					}
-				} else{
+				} else {
 					error = true;
 					LOG.error("{} NOT valid: {}", OPTION_MANIFEST_UUID, tmpUUID);
 				}
+			} else if(cl.hasOption(OPTION_MANIFEST_UID_SEED)) {
+				String manifest_uid_seed = cl.getOptionValue(OPTION_MANIFEST_UID_SEED);
+
+				manifest_uuid = newOIDbyString(manifest_uid_seed, 0);
+				LOG.info("manifest-uuid generated: seed={}, uuid={}", manifest_uid_seed, manifest_uuid);
 			} else {
 				manifest_uuid = newUUID();
 			}
@@ -247,7 +256,7 @@ public class MHDsend extends UtilContext {
 				String manifest_uid_seed = cl.getOptionValue(OPTION_MANIFEST_UID_SEED);
 				LOG.info("option {}={}", OPTION_MANIFEST_UID_SEED, manifest_uid_seed);
 
-				manifest_uid = newOIDbyString(manifest_uid_seed);
+				manifest_uid = newOIDbyString(manifest_uid_seed, 99);
 				LOG.info("manifest-uid generated: seed={}, uid={}", manifest_uid_seed, manifest_uid);
 			} else {
 				manifest_uid = newOID();
@@ -337,6 +346,11 @@ public class MHDsend extends UtilContext {
 					error = true;
 					LOG.error("{} NOT valid: {}", OPTION_DOCUMENT_UUID, tmpUUID);
 				}
+			} else if (cl.hasOption(OPTION_DOCUMENT_UID_SEED)) {
+				String document_uid_seed = cl.getOptionValue(OPTION_DOCUMENT_UID_SEED);
+
+				document_uuid = newOIDbyString(document_uid_seed, 0);
+				LOG.info("document-uuid generated: seed={}, uuid={}", document_uid_seed, manifest_uuid);
 			} else {
 				document_uuid = newUUID();
 			}
@@ -361,7 +375,7 @@ public class MHDsend extends UtilContext {
 				String document_uid_seed = cl.getOptionValue(OPTION_DOCUMENT_UID_SEED);
 				LOG.info("option {}={}", OPTION_DOCUMENT_UID_SEED, document_uid_seed);
 
-				document_uid = newOIDbyString(document_uid_seed);
+				document_uid = newOIDbyString(document_uid_seed, 99);
 				LOG.info("document-uid generated: seed={}, uid={}", document_uid_seed, manifest_uid);
 			} else {
 				document_uid = newOID();
@@ -396,7 +410,7 @@ public class MHDsend extends UtilContext {
 
 			// category (Required)
 			if (cl.hasOption(OPTION_CATEGORY)) {
-				String categoryCodeValue = cl.getOptionValue(OPTION_TYPE);
+				String categoryCodeValue = cl.getOptionValue(OPTION_CATEGORY);
 				LOG.info("option {}={}", OPTION_CATEGORY, categoryCodeValue);
 
 				if (checkCode(cl.getOptionValue(OPTION_CATEGORY))) {
@@ -474,6 +488,14 @@ public class MHDsend extends UtilContext {
 				optionMap.put(OPTION_DOCUMENT_TITLE, data_binary_file.getName());
 			}
 
+			// format
+			if (cl.hasOption(OPTION_FORMAT)) {
+				String format = cl.getOptionValue(OPTION_FORMAT);
+				LOG.info("option {}={}", OPTION_FORMAT, format);
+
+				optionMap.put(OPTION_FORMAT, format);
+			}
+
 			// event
 			if (cl.hasOption(OPTION_EVENT)) {
 				List<Code> eventCodeList = new ArrayList<>();
@@ -493,6 +515,34 @@ public class MHDsend extends UtilContext {
 				}
 
 				optionMap.put(OPTION_EVENT, eventCodeList);
+			}
+
+			// period - start
+			if (cl.hasOption(OPTION_PERIOD_START)) {
+				String start_string = cl.getOptionValue(OPTION_PERIOD_START);
+				LOG.info("option {}={}", OPTION_PERIOD_START, start_string);
+
+				Date start = checkDate(start_string);
+				if (start != null) {
+					optionMap.put(OPTION_PERIOD_START, start);
+				} else {
+					error = true;
+					LOG.error("{} NOT valid: {}", OPTION_PERIOD_START, start_string);
+				}
+			}
+
+			// period - stop
+			if (cl.hasOption(OPTION_PERIOD_STOP)) {
+				String stop_string = cl.getOptionValue(OPTION_PERIOD_STOP);
+				LOG.info("option {}={}", OPTION_PERIOD_STOP, stop_string);
+
+				Date stop = checkDate(stop_string);
+				if (stop != null) {
+					optionMap.put(OPTION_PERIOD_STOP, stop);
+				} else {
+					error = true;
+					LOG.error("{} NOT valid: {}", OPTION_PERIOD_STOP, stop_string);
+				}
 			}
 
 			// facility
@@ -539,7 +589,6 @@ public class MHDsend extends UtilContext {
 						LOG.error("{} NOT valid: {}", OPTION_REFERENCE_ID, referenceIdString);
 					}
 				}
-
 				optionMap.put(OPTION_REFERENCE_ID, referenceIdList);
 			}
 
@@ -557,10 +606,11 @@ public class MHDsend extends UtilContext {
 		}
 	}
 
-	private static String newOIDbyString(String uidSeed) {
+	private static String newOIDbyString(String uidSeed, int flag) {
 		BigInteger bi = null;
+		UUID uuid = null;
 		try {
-			UUID uuid = UUID.nameUUIDFromBytes(uidSeed.getBytes("UTF-8"));
+			uuid = UUID.nameUUIDFromBytes(uidSeed.getBytes("UTF-8"));
 			ByteBuffer bb = ByteBuffer.wrap(new byte[16]);
 			bb.putLong(uuid.getMostSignificantBits());
 			bb.putLong(uuid.getLeastSignificantBits());
@@ -569,7 +619,11 @@ public class MHDsend extends UtilContext {
 		} catch (UnsupportedEncodingException e) {
 			e.printStackTrace();
 		}
-		return "2.25." + bi.abs().toString();
+		if (flag == 0) {
+			return UUID_Prefix + uuid.toString();
+		} else {
+			return "2.25." + bi.abs().toString();
+		}
 	}
 
 	private static Reference createReferenceId(String referenceId) {
