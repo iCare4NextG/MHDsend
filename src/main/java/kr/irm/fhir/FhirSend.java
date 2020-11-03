@@ -135,7 +135,7 @@ public class FhirSend extends UtilContext {
 		} catch (URISyntaxException | MalformedURLException e) {
 			e.printStackTrace();
 		}
-		LOG.error("patient NOT found: id={}", patient_id);
+		LOG.info("patient NOT found: id={}", patient_id);
 		return null;
 	}
 
