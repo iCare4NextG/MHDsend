@@ -14,12 +14,18 @@ public class UtilContext {
 	// option commons
 	public static final String OPTION_OAUTH_TOKEN = "oauth-token";
 	public static final String OPTION_SERVER_URL = "server-url";
+	public static final String OPTION_ATTACH_URL = "attach-url";
 	public static final String OPTION_TIMEOUT = "timeout";
 	public static final String OPTION_VERBOSE = "verbose";
 	public static final String OPTION_PATIENT_ID = "patient-id";
 	public static final String OPTION_PATIENT_NANE = "patient-name";
 	public static final String OPTION_PATIENT_SEX = "patient-sex";
 	public static final String OPTION_PATIENT_BIRTHDATE = "patient-birthdate";
+	public static final String OPTION_PATIENT_GROUP = "patient-group";
+	public static final String OPTION_AUTHOR_ID = "author-id";
+	public static final String OPTION_AUTHOR_FISRTNAME = "author-firstname";
+	public static final String OPTION_AUTHOR_LASTNAME = "author-lastname";
+	public static final String OPTION_AUTHOR_ASSIGN_UID = "author-assign-uid";
 
 	// Document Manifest
 	public static final String OPTION_MANIFEST_UUID = "manifest-uuid";
@@ -30,6 +36,7 @@ public class UtilContext {
 	public static final String OPTION_SOURCE = "source";
 	public static final String OPTION_MANIFEST_TITLE = "manifest-title";
 	public static final String OPTION_MANIFEST_UID_SEED = "manifest-uid-seed";
+	public static final String OPTION_MANIFEST_TEXT = "manifest-text";
 
 	// Document Reference
 	public static final String OPTION_DOCUMENT_UUID = "document-uuid";
@@ -55,4 +62,7 @@ public class UtilContext {
 	// Binary
 	public static final String OPTION_BINARY_UUID = "binary-uuid";
 	public static final String OPTION_DATA_BINARY = "data-binary";
+
+	// XDS
+
 }
