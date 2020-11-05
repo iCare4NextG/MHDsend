@@ -269,7 +269,7 @@ public class MHDsend extends UtilContext {
 			docsetUID = newOIDbyString(manifestUIDSeed, 99);
 			LOG.info("manifest-uid generated: seed={}, uid={}", manifestUIDSeed, docsetUID);
 		} else {
-			docsetUID = newOID();
+			docsetUID = randomOID();
 		}
 		optionMap.put("docsetUID", docsetUID);
 
@@ -353,7 +353,7 @@ public class MHDsend extends UtilContext {
 			documentUID = newOIDbyString(documentUIDSeed, 99);
 			LOG.info("document-uid generated: seed={}, uid={}", documentUIDSeed, docsetUID);
 		} else {
-			documentUID = newOID();
+			documentUID = randomOID();
 		}
 		optionMap.put("documentUID", documentUID);
 
@@ -1088,6 +1088,10 @@ public class MHDsend extends UtilContext {
 		} catch (Exception e) {
 			return false;
 		}
+	}
+
+	private static String randomUUID() {
+		return UUID.randomUUID().toString();
 	}
 
 	private static String newUUID() {
