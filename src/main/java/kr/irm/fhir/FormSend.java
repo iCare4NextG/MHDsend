@@ -1,5 +1,8 @@
 package kr.irm.fhir;
 
+import org.hl7.fhir.r4.model.CodeableConcept;
+import org.hl7.fhir.r4.model.Identifier;
+import org.hl7.fhir.r4.model.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,7 +18,7 @@ public class FormSend extends UtilContext {
 	public void sendForm(Map<String, Object> optionMap) {
 		String attachURL = (String) optionMap.get(OPTION_ATTACH_URL);
 		LOG.info("URL={}", attachURL);
-		String oauthToken = (String) optionMap.get(OPTION_OAUTH_TOKEN);
+		//String oauthToken = (String) optionMap.get(OPTION_OAUTH_TOKEN);
 		String mimeType = (String) optionMap.get("mimeType");
 		String fileName = (String) optionMap.get(OPTION_DOCUMENT_TITLE);
 
@@ -29,49 +32,86 @@ public class FormSend extends UtilContext {
 			http.setDoOutput(true);
 			http.setRequestMethod("POST");
 			http.setRequestProperty("content-type", "multipart/form-data");
-			http.setRequestProperty("Authorization", "Bearer " + oauthToken);
+			//http.setRequestProperty("Authorization", "Bearer " + oauthToken);
 
-			OutputStreamWriter outStream = new OutputStreamWriter(http.getOutputStream(), "UTF-8");
-			PrintWriter writer = new PrintWriter(outStream);
+			OutputStream ostr = http.getOutputStream();
 			if (optionMap != null) {
 
 				Set key = optionMap.keySet();
 
 				for (Iterator iterator = key.iterator(); iterator.hasNext();) {
 					String keyName = (String) iterator.next();
-					writer.append("--" + boundary).append("\r\n");
+				//	writer.append("--" + boundary).append("\r\n");
+					ostr.write(String.format("--%s\r\n", boundary).getBytes());
 
 					if (keyName.equals("attachFile")) {
 						File attachFile = (File) optionMap.get(keyName);
-						writer.append("Content-Disposition: form-data; name=\"" + keyName +"\"; filename=\"" + fileName + "\"").append("\r\n");
-						writer.append("Content-Type: " + mimeType).append("\r\n");
-						writer.append("\r\n");
+						ostr.write(String.format("Content-Disposition: form-data; name=\"%s\"; filename=\"%s\"\r\n", keyName, fileName).getBytes());
+						ostr.write(String.format("Content-Type: %s\r\n", mimeType).getBytes());
+						ostr.write(String.format("\r\n").getBytes());
 
-						BufferedReader reader = null;
+						FileInputStream fis = null;
 						try {
-							reader = new BufferedReader(new InputStreamReader(new FileInputStream(attachFile), "UTF-8"));
-							for (String line; (line = reader.readLine()) != null; ) {
-								writer.append(line).append("\r\n");
+							byte[] buffer = new byte[327680];
+							int n;
+							fis = new FileInputStream(attachFile);
+							while((n = fis.read(buffer)) != -1) {
+								ostr.write(buffer, 0, n);
 							}
+							ostr.write(String.format("\r\n").getBytes());
 						} finally {
-							if (reader != null) try {
-								reader.close();
-							} catch (IOException logOrIgnore) {
+							if (fis != null) {
+								fis.close();
+							}
+						}
+					} else if (keyName.equals("eventCode") || keyName.equals(OPTION_SECURITY_LABEL)){
+						String[] values = (String[]) optionMap.get(keyName);
+						if (values != null) {
+							int index = 0;
+							for(String value : values) {
+								ostr.write(String.format("Content-Disposition: form-data; name=\"%s\"\r\n", keyName).getBytes());
+								ostr.write(String.format("\r\n").getBytes());
+								ostr.write(value.getBytes());
+								ostr.write(String.format("\r\n").getBytes());
+								if (index++ < values.length - 1) {
+									ostr.write(String.format("--%s\r\n", boundary).getBytes());
+								}
+							}
+						}
+					} else if (keyName.equals("referenceIdList")){
+						List<Reference> referenceIdList = (List<Reference>) optionMap.get(keyName);
+						if (referenceIdList != null) {
+							int index = 0;
+							for(Reference referenceId : referenceIdList) {
+								Identifier identifier = referenceId.getIdentifier();
+								CodeableConcept cc = identifier.getType();
+								String value = String.format("%s^^^&%s&%s^%s", identifier.getValue(), identifier.getSystem(), "ISO", cc.getCodingFirstRep().getCode());
+								ostr.write(String.format("Content-Disposition: form-data; name=\"referenceId\"\r\n").getBytes());
+								ostr.write(String.format("\r\n").getBytes());
+								ostr.write(value.getBytes());
+								ostr.write(String.format("\r\n").getBytes());
+								if (index++ < referenceIdList.size() - 1) {
+									ostr.write(String.format("--%s\r\n", boundary).getBytes());
+								}
 							}
 						}
 					} else {
-						String value = (String) optionMap.get(keyName);
-						writer.append("Content-Disposition: form-data; name=\"" + keyName +"\"").append("\r\n");
-						writer.append("\r\n");
-						writer.append(value).append("\r\n");
+						Object object = optionMap.get(keyName);
+						if (object instanceof String) {
+							String value = (String) optionMap.get(keyName);
+							ostr.write(String.format("Content-Disposition: form-data; name=\"%s\"\r\n", keyName).getBytes());
+							ostr.write(String.format("\r\n").getBytes());
+							ostr.write(value.getBytes());
+							ostr.write(String.format("\r\n").getBytes());
+						} else {
+							LOG.info("object={}", object);
+						}
 					}
 				}
 
-				writer.append("\r\n");
-				writer.append("--" + boundary + "--").append("\r\n");
-				writer.append("\r\n");
-				writer.flush();
-				writer.close();
+				ostr.write(String.format("--%s--\r\n", boundary).getBytes());
+				ostr.write(String.format("\r\n").getBytes());
+				ostr.close();
 			}
 
 			LOG.info("Response=\n{}", http.getResponseMessage());

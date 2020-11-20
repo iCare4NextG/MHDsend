@@ -20,7 +20,6 @@ public class MHDsend extends UtilContext {
 	public static void main(String[] args) {
 		LOG.info("starting mhdsend...");
 		LOG.info("option args:{} ", Arrays.toString(args));
-
 		Options opts = new Options();
 		Map<String, Object> optionMap = new HashMap<String, Object>();
 		setOptions(opts);
@@ -480,6 +479,25 @@ public class MHDsend extends UtilContext {
 			LOG.error("option required: {}", OPTION_CONTENT_TYPE);
 		}
 
+		// reference-id (related)
+		if (cl.hasOption(OPTION_REFERENCE_ID)) {
+			List<Reference> referenceIdList = new ArrayList<>();
+
+			String[] referenceIdStrings = cl.getOptionValues(OPTION_REFERENCE_ID);
+			for (String referenceIdString : referenceIdStrings) {
+				LOG.info("option {}={}", OPTION_REFERENCE_ID, referenceIdString);
+
+				if (checkReferenceId(referenceIdString)) {
+					Reference reference = createReferenceId(referenceIdString);
+					referenceIdList.add(reference);
+				} else {
+					error = true;
+					LOG.error("{} NOT valid: {}", OPTION_REFERENCE_ID, referenceIdString);
+				}
+			}
+			optionMap.put("referenceIdList", referenceIdList);
+		}
+
 		return error;
 	}
 
@@ -676,7 +694,7 @@ public class MHDsend extends UtilContext {
 			error = true;
 			LOG.error("option required: {}", OPTION_MANIFEST_CREATED);
 		}
-
+		LOG.info("???????");
 		// source
 		if (cl.hasOption(OPTION_SOURCE)) {
 			String source = cl.getOptionValue(OPTION_SOURCE);
@@ -687,6 +705,7 @@ public class MHDsend extends UtilContext {
 			error = true;
 			LOG.error("option required: {}", OPTION_SOURCE);
 		}
+		LOG.info("??????222?");
 
 		// manifest-title (Required)
 		if (cl.hasOption(OPTION_MANIFEST_TITLE)) {
