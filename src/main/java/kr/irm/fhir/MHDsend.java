@@ -246,6 +246,17 @@ public class MHDsend extends UtilContext {
 		}
 		optionMap.put("docsetUUID", docsetUUID);
 
+		// submissionTime (Required)
+		if (cl.hasOption(OPTION_MANIFEST_CREATED)) {
+			String manifestCreatedString = cl.getOptionValue(OPTION_MANIFEST_CREATED);
+			LOG.info("option {}={}", OPTION_MANIFEST_CREATED, manifestCreatedString);
+
+			optionMap.put("submissionTime", manifestCreatedString);
+		} else {
+			error = true;
+			LOG.error("option required: {}", OPTION_MANIFEST_CREATED);
+		}
+
 		// docsetUID (Required)
 		if (cl.hasOption(OPTION_MANIFEST_UID)) {
 			String tmpOID = cl.getOptionValue(OPTION_MANIFEST_UID);
