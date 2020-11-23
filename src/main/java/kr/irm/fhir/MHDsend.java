@@ -479,6 +479,17 @@ public class MHDsend extends UtilContext {
 			LOG.error("option required: {}", OPTION_CONTENT_TYPE);
 		}
 
+		// source
+		if (cl.hasOption(OPTION_SOURCE)) {
+			String source = cl.getOptionValue(OPTION_SOURCE);
+			LOG.info("option {}={}", OPTION_SOURCE, source);
+
+			optionMap.put("sourceId", source);
+		} else {
+			error = true;
+			LOG.error("option required: {}", OPTION_SOURCE);
+		}
+
 		// reference-id (related)
 		if (cl.hasOption(OPTION_REFERENCE_ID)) {
 			List<Reference> referenceIdList = new ArrayList<>();
