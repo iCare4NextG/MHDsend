@@ -46,7 +46,7 @@ public class FormSend extends UtilContext {
 
 					if (keyName.equals("attachFile")) {
 						File attachFile = (File) optionMap.get(keyName);
-						ostr.write(String.format("Content-Disposition: form-data; name=\"%s\"; filename=\"%s\"\r\n", keyName, fileName).getBytes());
+						ostr.write(String.format("Content-Disposition: form-data; name=\"%s\"; filename=\"%s\"\r\n", keyName, fileName).getBytes("UTF-8"));
 						ostr.write(String.format("Content-Type: %s\r\n", mimeType).getBytes());
 						ostr.write(String.format("\r\n").getBytes());
 
@@ -69,9 +69,9 @@ public class FormSend extends UtilContext {
 						if (values != null) {
 							int index = 0;
 							for(String value : values) {
-								ostr.write(String.format("Content-Disposition: form-data; name=\"%s\"\r\n", keyName).getBytes());
+								ostr.write(String.format("Content-Disposition: form-data; name=\"%s\"\r\n", keyName).getBytes("UTF-8"));
 								ostr.write(String.format("\r\n").getBytes());
-								ostr.write(value.getBytes());
+								ostr.write(value.getBytes("UTF-8"));
 								ostr.write(String.format("\r\n").getBytes());
 								if (index++ < values.length - 1) {
 									ostr.write(String.format("--%s\r\n", boundary).getBytes());
@@ -86,9 +86,9 @@ public class FormSend extends UtilContext {
 								Identifier identifier = referenceId.getIdentifier();
 								CodeableConcept cc = identifier.getType();
 								String value = String.format("%s^^^&%s&%s^%s", identifier.getValue(), identifier.getSystem(), "ISO", cc.getCodingFirstRep().getCode());
-								ostr.write(String.format("Content-Disposition: form-data; name=\"referenceId\"\r\n").getBytes());
+								ostr.write(String.format("Content-Disposition: form-data; name=\"referenceId\"\r\n").getBytes("UTF-8"));
 								ostr.write(String.format("\r\n").getBytes());
-								ostr.write(value.getBytes());
+								ostr.write(value.getBytes("UTF-8"));
 								ostr.write(String.format("\r\n").getBytes());
 								if (index++ < referenceIdList.size() - 1) {
 									ostr.write(String.format("--%s\r\n", boundary).getBytes());
@@ -99,9 +99,9 @@ public class FormSend extends UtilContext {
 						Object object = optionMap.get(keyName);
 						if (object instanceof String) {
 							String value = (String) optionMap.get(keyName);
-							ostr.write(String.format("Content-Disposition: form-data; name=\"%s\"\r\n", keyName).getBytes());
+							ostr.write(String.format("Content-Disposition: form-data; name=\"%s\"\r\n", keyName).getBytes("UTF-8"));
 							ostr.write(String.format("\r\n").getBytes());
-							ostr.write(value.getBytes());
+							ostr.write(value.getBytes("UTF-8"));
 							ostr.write(String.format("\r\n").getBytes());
 						} else {
 							LOG.info("object={}", object);
