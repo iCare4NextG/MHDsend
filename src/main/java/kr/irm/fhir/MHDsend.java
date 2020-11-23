@@ -705,7 +705,6 @@ public class MHDsend extends UtilContext {
 			error = true;
 			LOG.error("option required: {}", OPTION_MANIFEST_CREATED);
 		}
-		LOG.info("???????");
 		// source
 		if (cl.hasOption(OPTION_SOURCE)) {
 			String source = cl.getOptionValue(OPTION_SOURCE);
@@ -716,7 +715,6 @@ public class MHDsend extends UtilContext {
 			error = true;
 			LOG.error("option required: {}", OPTION_SOURCE);
 		}
-		LOG.info("??????222?");
 
 		// manifest-title (Required)
 		if (cl.hasOption(OPTION_MANIFEST_TITLE)) {
