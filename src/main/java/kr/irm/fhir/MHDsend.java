@@ -30,13 +30,8 @@ public class MHDsend extends UtilContext {
 			System.exit(1);
 		}
 
-		if (optionMap.get(OPTION_ATTACH_URL) == null) {
-			FhirSend fhirSend = new FhirSend();
-			fhirSend.sendFhir(optionMap);
-		} else {
-			FormSend formSend = new FormSend();
-			formSend.sendForm(optionMap);
-		}
+		FhirSend fhirSend = new FhirSend();
+		fhirSend.sendFhir(optionMap);
 
 	}
 
@@ -47,7 +42,6 @@ public class MHDsend extends UtilContext {
 		// Commons
 		opts.addOption("o", OPTION_OAUTH_TOKEN, true, "OAuth Token");
 		opts.addOption("s", OPTION_SERVER_URL, true, "FHIR Server Base URL");
-		opts.addOption("a", OPTION_ATTACH_URL, true, "XDS Server Base URL");
 		opts.addOption(null, OPTION_TIMEOUT, true, "Timeout in seconds (default: 30)");
 		opts.addOption("v", OPTION_VERBOSE, false, "Show transaction logs");
 		opts.addOption("i", OPTION_PATIENT_ID, true, "Patient.identifier (ID)");
@@ -117,30 +111,19 @@ public class MHDsend extends UtilContext {
 			// Common
 			error = parseCommonOptions(optionMap, cl);
 
-			// Check send as 'FHIR' or 'XDS'
-			if (cl.hasOption(OPTION_ATTACH_URL)) {
-				// XDS
-				String attach_url = cl.getOptionValue(OPTION_ATTACH_URL);
-				LOG.info("option {}={}", OPTION_ATTACH_URL, attach_url);
+			// FHIR
+			// Server-url (Required)
+			if (cl.hasOption(OPTION_SERVER_URL)) {
+				String server_url = cl.getOptionValue(OPTION_SERVER_URL);
+				LOG.info("option {}={}", OPTION_SERVER_URL, server_url);
 
-				optionMap.put(OPTION_ATTACH_URL, attach_url);
-
-				error = parseXDSOptions(optionMap, cl);
+				optionMap.put(OPTION_SERVER_URL, server_url);
 			} else {
-				// FHIR
-				// Server-url (Required)
-				if (cl.hasOption(OPTION_SERVER_URL)) {
-					String server_url = cl.getOptionValue(OPTION_SERVER_URL);
-					LOG.info("option {}={}", OPTION_SERVER_URL, server_url);
-
-					optionMap.put(OPTION_SERVER_URL, server_url);
-				} else {
-					error = true;
-					LOG.error("option required: {}", OPTION_SERVER_URL);
-				}
-
-				error = parseFHIROptions(optionMap, cl);
+				error = true;
+				LOG.error("option required: {}", OPTION_SERVER_URL);
 			}
+
+			error = parseFHIROptions(optionMap, cl);
 		} catch (ParseException e) {
 			e.printStackTrace();
 		}
@@ -166,359 +149,6 @@ public class MHDsend extends UtilContext {
 			LOG.info("option {}={}", OPTION_TIMEOUT, timeout);
 		}
 		optionMap.put("timeout", timeout);
-
-		return error;
-	}
-
-	private static boolean parseXDSOptions(Map<String, Object> optionMap, CommandLine cl) {
-		boolean error = false;
-		File dataBinaryFile = null;
-		String docsetUUID = "";
-		String docsetUID = "";
-		String documentUUID = "";
-		String documentUID = "";
-		////////////////////////////////////////////////
-		// SubmissionSet
-		////////////////////////////////////////////////
-
-		// patient-id (Required)
-		if (cl.hasOption(OPTION_PATIENT_ID)) {
-			String patientId = cl.getOptionValue(OPTION_PATIENT_ID);
-			LOG.info("option {}={}", OPTION_PATIENT_ID, patientId);
-
-			String patientGroupId = "";
-			if (cl.hasOption(OPTION_PATIENT_GROUP)) {
-				patientGroupId = cl.getOptionValue(OPTION_PATIENT_GROUP);
-				LOG.info("option {}={}", OPTION_PATIENT_GROUP, patientGroupId);
-			}
-
-			String patientIdCX = patientId + "^^^&" + patientGroupId + "&ISO";
-
-			optionMap.put("patientId", patientIdCX);
-		} else {
-			error = true;
-			LOG.error("option required: {}", OPTION_PATIENT_ID);
-		}
-
-		// authorPerson
-		if (cl.hasOption(OPTION_AUTHOR_ID)) {
-			String authorId = cl.getOptionValue(OPTION_AUTHOR_ID);
-			String authorFirstName = "";
-			String authorLastName = "";
-			String authorAssignUID = "";
-
-			if (cl.hasOption(OPTION_AUTHOR_FISRTNAME)) {
-				authorFirstName = cl.getOptionValue(OPTION_AUTHOR_FISRTNAME);
-			}
-			if (cl.hasOption(OPTION_AUTHOR_LASTNAME)) {
-				authorLastName = cl.getOptionValue(OPTION_AUTHOR_LASTNAME);
-			}
-			if (cl.hasOption(OPTION_AUTHOR_ASSIGN_UID)) {
-				authorAssignUID = cl.getOptionValue(OPTION_AUTHOR_ASSIGN_UID);
-			}
-
-			String authorPerson = authorId + "^" + authorFirstName + "^" + authorLastName + "^^^^^^&" + authorAssignUID + "&ISO";
-			optionMap.put("authorPerson", authorPerson);
-		}
-
-		// docsetUUID (Required)
-		if (cl.hasOption(OPTION_MANIFEST_UUID)) {
-			String tmpUUID = cl.getOptionValue(OPTION_MANIFEST_UUID);
-			LOG.info("option {}={}", OPTION_MANIFEST_UUID, tmpUUID);
-
-			if (checkUUID(tmpUUID)) {
-				if (tmpUUID.startsWith(UUID_Prefix)) {
-					docsetUUID = tmpUUID;
-				} else {
-					docsetUUID = UUID_Prefix + tmpUUID;
-				}
-			} else {
-				error = true;
-				LOG.error("{} NOT valid: {}", OPTION_MANIFEST_UUID, tmpUUID);
-			}
-		} else if(cl.hasOption(OPTION_MANIFEST_UID_SEED)) {
-			String manifestUIDSeed = cl.getOptionValue(OPTION_MANIFEST_UID_SEED);
-
-			docsetUUID = newOIDbyString(manifestUIDSeed, 0);
-			LOG.info("manifest-uuid generated: seed={}, uuid={}", manifestUIDSeed, docsetUUID);
-		} else {
-			docsetUUID = newUUID();
-		}
-		optionMap.put("docsetUUID", docsetUUID);
-
-		// submissionTime (Required)
-		if (cl.hasOption(OPTION_MANIFEST_CREATED)) {
-			String manifestCreatedString = cl.getOptionValue(OPTION_MANIFEST_CREATED);
-			LOG.info("option {}={}", OPTION_MANIFEST_CREATED, manifestCreatedString);
-
-			optionMap.put("submissionTime", manifestCreatedString);
-		} else {
-			error = true;
-			LOG.error("option required: {}", OPTION_MANIFEST_CREATED);
-		}
-
-		// docsetUID (Required)
-		if (cl.hasOption(OPTION_MANIFEST_UID)) {
-			String tmpOID = cl.getOptionValue(OPTION_MANIFEST_UID);
-			LOG.info("option {}={}", OPTION_MANIFEST_UID, tmpOID);
-
-			if (checkOID(tmpOID)) {
-				if (tmpOID.startsWith(OID_Prefix)) {
-					docsetUID = tmpOID;
-				} else {
-					docsetUID = OID_Prefix + tmpOID;
-				}
-			} else {
-				error = true;
-				LOG.error("{} NOT valid: {}", OPTION_MANIFEST_UID, tmpOID);
-			}
-		} else if (cl.hasOption(OPTION_MANIFEST_UID_SEED)) {
-			String manifestUIDSeed = cl.getOptionValue(OPTION_MANIFEST_UID_SEED);
-			LOG.info("option {}={}", OPTION_MANIFEST_UID_SEED, manifestUIDSeed);
-
-			docsetUID = newOIDbyString(manifestUIDSeed, 99);
-			LOG.info("manifest-uid generated: seed={}, uid={}", manifestUIDSeed, docsetUID);
-		} else {
-			docsetUID = randomOID();
-		}
-		optionMap.put("docsetUID", docsetUID);
-
-		// contentTypeCode (Required)
-		if (cl.hasOption(OPTION_MANIFEST_TYPE)) {
-			String typeCodeValue = cl.getOptionValue(OPTION_MANIFEST_TYPE);
-			LOG.info("option {}={}", OPTION_MANIFEST_TYPE, typeCodeValue);
-			optionMap.put("contentTypeCode", typeCodeValue);
-		} else {
-			error = true;
-			LOG.error("option required: {}", OPTION_MANIFEST_TYPE);
-		}
-
-		// docsetTitle (Required)
-		if (cl.hasOption(OPTION_MANIFEST_TITLE)) {
-			String manifestTitle = cl.getOptionValue(OPTION_MANIFEST_TITLE);
-			LOG.info("option {}={}", OPTION_MANIFEST_TITLE, manifestTitle);
-
-			optionMap.put("docsetTitle", manifestTitle);
-		} else {
-			error = true;
-			LOG.error("option required: {}", OPTION_MANIFEST_TITLE);
-		}
-
-		// docsetComments
-		if (cl.hasOption(OPTION_MANIFEST_TEXT)) {
-			String manifestText = cl.getOptionValue(OPTION_MANIFEST_TEXT);
-			LOG.info("option {}={}", OPTION_MANIFEST_TEXT, manifestText);
-
-			optionMap.put("docsetComments", manifestText);
-		}
-
-		////////////////////////////////////////////////
-		// Document Entry
-		////////////////////////////////////////////////
-
-		// documentUUID (Required)
-		if (cl.hasOption(OPTION_DOCUMENT_UUID)) {
-			String tmpUUID = cl.getOptionValue(OPTION_DOCUMENT_UUID);
-			LOG.info("option {}={}", OPTION_DOCUMENT_UUID, tmpUUID);
-
-			if (checkUUID(tmpUUID)) {
-				if (tmpUUID.startsWith(UUID_Prefix)) {
-					documentUUID = tmpUUID;
-				} else {
-					documentUUID = UUID_Prefix + tmpUUID;
-				}
-			} else {
-				error = true;
-				LOG.error("{} NOT valid: {}", OPTION_DOCUMENT_UUID, tmpUUID);
-			}
-		} else if (cl.hasOption(OPTION_DOCUMENT_UID_SEED)) {
-			String documentUIDSeed = cl.getOptionValue(OPTION_DOCUMENT_UID_SEED);
-
-			documentUUID = newOIDbyString(documentUIDSeed, 0);
-			LOG.info("document-uuid generated: seed={}, uuid={}", documentUIDSeed, docsetUUID);
-		} else {
-			documentUUID = newUUID();
-		}
-		optionMap.put("documentUUID", documentUUID);
-
-		// documentUID (Required)
-		if (cl.hasOption(OPTION_DOCUMENT_UID)) {
-			String tmpOID = cl.getOptionValue(OPTION_DOCUMENT_UID);
-			LOG.info("option {}={}", OPTION_DOCUMENT_UID, tmpOID);
-
-			if (checkOID(tmpOID)) {
-				if (tmpOID.startsWith(OID_Prefix)) {
-					documentUID = tmpOID;
-				} else {
-					documentUID = OID_Prefix + tmpOID;
-				}
-			} else {
-				error = true;
-				LOG.error("format does not match: {}", OPTION_MANIFEST_TYPE);
-			}
-		} else if (cl.hasOption(OPTION_DOCUMENT_UID_SEED)) {
-			String documentUIDSeed = cl.getOptionValue(OPTION_DOCUMENT_UID_SEED);
-			LOG.info("option {}={}", OPTION_DOCUMENT_UID_SEED, documentUIDSeed);
-
-			documentUID = newOIDbyString(documentUIDSeed, 99);
-			LOG.info("document-uid generated: seed={}, uid={}", documentUIDSeed, docsetUID);
-		} else {
-			documentUID = randomOID();
-		}
-		optionMap.put("documentUID", documentUID);
-
-		// attachFile (Required)
-		if (cl.hasOption(OPTION_DATA_BINARY)) {
-			String dataPath = cl.getOptionValue(OPTION_DATA_BINARY);
-			LOG.info("option {}={}", OPTION_DATA_BINARY, dataPath);
-
-			dataBinaryFile = new File(dataPath);
-
-			if (dataBinaryFile.exists() && dataBinaryFile.canRead()) {
-				optionMap.put("attachFile", dataBinaryFile);
-			} else {
-				error = true;
-				LOG.error("file NOT found: {}", dataBinaryFile);
-			}
-		} else {
-			error = true;
-			LOG.error("option required: {}", OPTION_DATA_BINARY);
-		}
-
-		// typeCode (Required)
-		if (cl.hasOption(OPTION_TYPE)) {
-			String typeCodeValue = cl.getOptionValue(OPTION_TYPE);
-			LOG.info("option {}={}", OPTION_TYPE, typeCodeValue);
-			optionMap.put("typeCode", typeCodeValue);
-		} else {
-			error = true;
-			LOG.error("option required: {}", OPTION_TYPE);
-		}
-
-		// classCode (Required)
-		if (cl.hasOption(OPTION_CATEGORY)) {
-			String categoryCodeValue = cl.getOptionValue(OPTION_CATEGORY);
-			LOG.info("option {}={}", OPTION_CATEGORY, categoryCodeValue);
-			optionMap.put("classCode", categoryCodeValue);
-		} else {
-			error = true;
-			LOG.error("option required: {}", OPTION_CATEGORY);
-		}
-
-		// creationTime
-		if (cl.hasOption(OPTION_DOCUMENT_CREATED)) {
-			String documentCreatedString = cl.getOptionValue(OPTION_DOCUMENT_CREATED);
-			LOG.info("option {}={}", OPTION_DOCUMENT_CREATED, documentCreatedString);
-			optionMap.put("creationTime", documentCreatedString);
-		}
-
-		// confidentialityCode
-		if (cl.hasOption(OPTION_SECURITY_LABEL)) {
-			String[] securityLabels = cl.getOptionValues(OPTION_SECURITY_LABEL);
-			LOG.info("option {}={}", OPTION_SECURITY_LABEL, securityLabels);
-			optionMap.put("confidentialityCode", securityLabels);
-		}
-
-		// languageCode
-		if (cl.hasOption(OPTION_LANGUAGE)) {
-			String language = cl.getOptionValue(OPTION_LANGUAGE);
-			LOG.info("option {}={}", OPTION_LANGUAGE, language);
-
-			optionMap.put("languageCode", language);
-		}
-
-		// documentTitle
-		if (cl.hasOption(OPTION_DOCUMENT_TITLE)) {
-			String documentTitle = cl.getOptionValue(OPTION_DOCUMENT_TITLE);
-			LOG.info("option {}={}", OPTION_DOCUMENT_TITLE, documentTitle);
-
-			optionMap.put("documentTitle", documentTitle);
-		} else if (dataBinaryFile != null) {
-			optionMap.put("documentTitle", dataBinaryFile.getName());
-		}
-
-		// formatCode
-		if (cl.hasOption(OPTION_FORMAT)) {
-			String format = cl.getOptionValue(OPTION_FORMAT);
-			LOG.info("option {}={}", OPTION_FORMAT, format);
-
-			optionMap.put("formatCode", format);
-		}
-
-		// eventCode
-		if (cl.hasOption(OPTION_EVENT)) {
-			String[] eventCodes = cl.getOptionValues(OPTION_EVENT);
-			LOG.info("option {}={}", OPTION_EVENT, eventCodes);
-			optionMap.put("eventCode", eventCodes);
-		}
-
-		// serviceStartTime
-		if (cl.hasOption(OPTION_PERIOD_START)) {
-			String startString = cl.getOptionValue(OPTION_PERIOD_START);
-			LOG.info("option {}={}", OPTION_PERIOD_START, startString);
-			optionMap.put("serviceStartTime", startString);
-		}
-
-		// serviceStopTime
-		if (cl.hasOption(OPTION_PERIOD_STOP)) {
-			String stopString = cl.getOptionValue(OPTION_PERIOD_STOP);
-			LOG.info("option {}={}", OPTION_PERIOD_STOP, stopString);
-			optionMap.put("serviceStopTime", stopString);
-		}
-
-		// healthcareFacilityTypeCode
-		if (cl.hasOption(OPTION_FACILITY)) {
-			String facilityCodeString = cl.getOptionValue(OPTION_FACILITY);
-			LOG.info("option {}={}", OPTION_FACILITY, facilityCodeString);
-			optionMap.put("healthcareFacilityTypeCode", facilityCodeString);
-		}
-
-		// practiceSettingCode
-		if (cl.hasOption(OPTION_PRACTICE)) {
-			String practiceCodeString = cl.getOptionValue(OPTION_PRACTICE);
-			LOG.info("option {}={}", OPTION_PRACTICE, practiceCodeString);
-			optionMap.put("practiceSettingCode", practiceCodeString);
-		}
-
-		// mimeType
-		if (cl.hasOption(OPTION_CONTENT_TYPE)) {
-			String content_type = cl.getOptionValue(OPTION_CONTENT_TYPE);
-			LOG.info("option {}={}", OPTION_CONTENT_TYPE, content_type);
-			optionMap.put("mimeType", content_type);
-		} else {
-			error = true;
-			LOG.error("option required: {}", OPTION_CONTENT_TYPE);
-		}
-
-		// source
-		if (cl.hasOption(OPTION_SOURCE)) {
-			String source = cl.getOptionValue(OPTION_SOURCE);
-			LOG.info("option {}={}", OPTION_SOURCE, source);
-
-			optionMap.put("sourceId", source);
-		} else {
-			error = true;
-			LOG.error("option required: {}", OPTION_SOURCE);
-		}
-
-		// reference-id (related)
-		if (cl.hasOption(OPTION_REFERENCE_ID)) {
-			List<Reference> referenceIdList = new ArrayList<>();
-
-			String[] referenceIdStrings = cl.getOptionValues(OPTION_REFERENCE_ID);
-			for (String referenceIdString : referenceIdStrings) {
-				LOG.info("option {}={}", OPTION_REFERENCE_ID, referenceIdString);
-
-				if (checkReferenceId(referenceIdString)) {
-					Reference reference = createReferenceId(referenceIdString);
-					referenceIdList.add(reference);
-				} else {
-					error = true;
-					LOG.error("{} NOT valid: {}", OPTION_REFERENCE_ID, referenceIdString);
-				}
-			}
-			optionMap.put("referenceIdList", referenceIdList);
-		}
 
 		return error;
 	}
