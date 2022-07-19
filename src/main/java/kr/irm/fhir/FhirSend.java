@@ -185,7 +185,7 @@ public class FhirSend extends UtilContext {
 		manifest.setId((String) options.get(OPTION_MANIFEST_UUID));
 		LOG.info("DocumentManifest.id={}", manifest.getId());
 
-		// MasterIdentifier (Required)
+		// MasterIdentifier (Required) - Unique Identifier for the set of documents
 		Identifier identifier = new Identifier();
 		identifier
 			.setSystem(IDENTIFIER_SYSTEM)
@@ -195,7 +195,7 @@ public class FhirSend extends UtilContext {
 			manifest.getMasterIdentifier().getSystem(),
 			manifest.getMasterIdentifier().getValue());
 
-		// Identifier (Required)
+		// Identifier (Required) - Other identifiers for the manifest
 		manifest.addIdentifier()
 			.setUse(Identifier.IdentifierUse.OFFICIAL)
 			.setSystem(IDENTIFIER_SYSTEM)
@@ -204,11 +204,11 @@ public class FhirSend extends UtilContext {
 			manifest.getIdentifier().get(0).getSystem(),
 			manifest.getIdentifier().get(0).getValue());
 
-		// status
+		// status (current | superseded | entered-in-error)
 		manifest.setStatus((Enumerations.DocumentReferenceStatus) options.get(OPTION_MANIFEST_STATUS));
 		LOG.info("DocumentManifest.status={}", manifest.getStatus());
 
-		// type (Required)
+		// type (Required) - Kind of document set
 		Code typeCode = (Code) options.get(OPTION_MANIFEST_TYPE);
 		CodeableConcept typeCC = createCodeableConcept(typeCode);
 		manifest.setType(typeCC);
@@ -218,28 +218,28 @@ public class FhirSend extends UtilContext {
 			typeCoding.getDisplay(),
 			typeCoding.getSystem());
 
-		// subject (Required)
+		// subject (Required) - The subject of the set of documents
 		Reference subjectReference = new Reference();
 		subjectReference.setReference(patientResourceId);
 		manifest.setSubject(subjectReference);
 		LOG.info("DocumentManifest.subject={}", manifest.getSubject().getReference());
 
-		// created
+		// created - When this document manifest created
 		Date manifestCreatedDate = (Date) options.get(OPTION_MANIFEST_CREATED);
 		if (manifestCreatedDate != null) {
 			manifest.setCreated(manifestCreatedDate);
 		}
 		LOG.info("DocumentManifest.created={}", manifest.getCreated());
 
-		// source
+		// source - The source system/application/software
 		manifest.setSource((String) options.get(OPTION_SOURCE));
 		LOG.info("DocumentManifest.source={}", manifest.getSource());
 
-		// description (Required)
+		// description (Required) - Human-readable description (title)
 		manifest.setDescription((String) options.get(OPTION_MANIFEST_TITLE));
 		LOG.info("DocumentManifest.description={}", manifest.getDescription());
 
-		// content
+		// content - Items in manifest
 		List<Reference> referenceList = new ArrayList<>();
 		referenceList.add(new Reference((String) options.get(OPTION_DOCUMENT_UUID)));
 		manifest.setContent(referenceList);
@@ -264,7 +264,7 @@ public class FhirSend extends UtilContext {
 		documentReference.setId((String) options.get(OPTION_DOCUMENT_UUID));
 		LOG.info("DocumentReference.id={}", documentReference.getId());
 
-		// masterIdentifier (Required)
+		// masterIdentifier (Required) - Master Version Specific Identifier
 		Identifier identifier = new Identifier();
 		identifier
 			.setSystem(IDENTIFIER_SYSTEM)
@@ -274,7 +274,7 @@ public class FhirSend extends UtilContext {
 			documentReference.getMasterIdentifier().getSystem(),
 			documentReference.getMasterIdentifier().getValue());
 
-		// identifier (Required)
+		// identifier (Required) - Other identifiers for the document
 		documentReference.addIdentifier().setUse(Identifier.IdentifierUse.OFFICIAL)
 			.setSystem(IDENTIFIER_SYSTEM)
 			.setValue((String) options.get(OPTION_DOCUMENT_UUID));
@@ -282,11 +282,11 @@ public class FhirSend extends UtilContext {
 			documentReference.getIdentifier().get(0).getSystem(),
 			documentReference.getIdentifier().get(0).getValue());
 
-		// status
+		// status (current | superseded | entered-in-error)
 		documentReference.setStatus((Enumerations.DocumentReferenceStatus) options.get(OPTION_DOCUMENT_STATUS));
 		LOG.info("DocumentReference.status={}", documentReference.getStatus());
 
-		// type (Required)
+		// type (Required) - Kind of document (LOINC if possible)
 		Code typeCode = (Code) options.get(OPTION_TYPE);
 		CodeableConcept typeCC = createCodeableConcept(typeCode);
 		documentReference.setType(typeCC);
@@ -296,7 +296,7 @@ public class FhirSend extends UtilContext {
 			typeCoding.getDisplay(),
 			typeCoding.getSystem());
 
-		// category (Required)
+		// category (Required) - Categorization of document
 		Code categoryCode = (Code) options.get(OPTION_CATEGORY);
 		CodeableConcept categoryCC = createCodeableConcept(categoryCode);
 
@@ -309,20 +309,20 @@ public class FhirSend extends UtilContext {
 			categoryCoding.getDisplay(),
 			categoryCoding.getSystem());
 
-		// subject (Required)
+		// subject (Required) - Who/what is the subject of the document
 		Reference subjectReference = new Reference();
 		subjectReference.setReference(patientResourceId);
 		documentReference.setSubject(subjectReference);
 		LOG.info("DocumentReference.subject={}", documentReference.getSubject().getReference());
 
-		// created
+		// created - When this document reference was created
 		Date documentCreatedDate = (Date) options.get(OPTION_DOCUMENT_CREATED);
 		if (documentCreatedDate != null) {
 			documentReference.setDate(documentCreatedDate);
 		}
 		LOG.info("DocumentReference.date={}", documentReference.getDate());
 
-		// content (Required / Optional)
+		// content (Required / Optional) - Document referenced
 		Attachment attachment = new Attachment();
 
 		String contentType = (String) options.get(OPTION_CONTENT_TYPE);
@@ -346,7 +346,7 @@ public class FhirSend extends UtilContext {
 			LOG.info("DocumentReference.attachment.creation={}", attachment.getCreation());
 		}
 
-		// format
+		// format - Format/content rules for the document
 		Code formatCode = (Code) options.get(OPTION_FORMAT);
 		if (formatCode != null) {
 			CodeableConcept formatCC = createCodeableConcept(formatCode);
@@ -364,10 +364,10 @@ public class FhirSend extends UtilContext {
 		documentReference.setContent(documentReferenceContentList);
 
 
-		// context (Optional)
+		// context (Optional) - 	Clinical context of document
 		DocumentReference.DocumentReferenceContextComponent documentReferenceContext = new DocumentReference.DocumentReferenceContextComponent();
 
-		// event
+		// event - Main clinical acts documented
 		@SuppressWarnings("unchecked")
 		List<Code> eventCodeList = (List<Code>) options.get(OPTION_EVENT);
 		if (eventCodeList != null) {
@@ -381,7 +381,7 @@ public class FhirSend extends UtilContext {
 			documentReferenceContext.setEvent(eventCCList);
 		}
 
-		// period-start
+		// period-start - Time of service that is being documented (start)
 		Date periodStart = (Date) options.get(OPTION_PERIOD_START);
 		Period period = new Period();
 		if (periodStart != null) {
@@ -389,21 +389,21 @@ public class FhirSend extends UtilContext {
 			LOG.info("DocumentReference.context.period start={}", period.getStart());
 		}
 
-		// period-end
+		// period-end - Time of service that is being documented (end)
 		Date periodEnd = (Date) options.get(OPTION_PERIOD_STOP);
 		if (periodEnd != null) {
 			documentReferenceContext.setPeriod(period.setEnd(periodEnd));
 			LOG.info("DocumentReference.context.period end={}", period.getEnd());
 		}
 
-		// facility
+		// facility - Kind of facility where patient was seen
 		Code facilityCode = (Code) options.get(OPTION_FACILITY);
 		if (facilityCode != null && facilityCode.codeSystem != null) {
 			CodeableConcept facilityCC = createCodeableConcept(facilityCode);
 			documentReferenceContext.setFacilityType(facilityCC);
 		}
 
-		// practice
+		// practice - Additional details about where the content was created (e.g. clinical specialty)
 		Code practiceCode = (Code) options.get(OPTION_PRACTICE);
 		if (practiceCode != null && practiceCode.codeSystem != null) {
 			CodeableConcept practiceCC = createCodeableConcept(practiceCode);
@@ -458,7 +458,7 @@ public class FhirSend extends UtilContext {
 			}
 		}
 
-		// security label
+		// security label - Document security-tags
 		@SuppressWarnings("unchecked")
 		List<Code> securityLabelCodeList = (List<Code>) options.get(OPTION_SECURITY_LABEL);
 		if (securityLabelCodeList != null) {
